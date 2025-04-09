@@ -7,6 +7,7 @@ import StudentListPage from "./pages/students/StudentListPage";
 
 function App() {
   return (
+
     <Router>
       <div style={{ padding: "1rem", background: "#eee" }}>
         <Link to="/">메인</Link> | <Link to="/login">로그인</Link> |{" "}
@@ -18,6 +19,7 @@ function App() {
         <Route path="/students" element={<StudentListPage />} />
       </Routes>
     </Router>
+
   );
 }
 

@@ -6,10 +6,8 @@ import styled from "styled-components";
 
 import Navbar from "./components/navigation/Navbar";
 import Sidebar from "./components/navigation/Sidebar";
-
 import MainPage from "./pages/main/MainPage";
 import LoginPage from "./pages/login/LoginPage";
-import StudentListPage from "./pages/students/StudentListPage";
 import StudentRecordPage from "./pages/studentsRecord/StudentRecordPage";
 import StudentDetailPage from "./pages/students/StudentDetailPage";
 
@@ -22,7 +20,6 @@ const MainContent = styled.main`
   flex: 1;
   margin-left: 240px; /* Sidebar 너비 */
   margin-top: 60px; /* Navbar 높이 */
-  padding: 2rem;
   background-color: #f5f5f5;
 `;
 
@@ -36,8 +33,7 @@ function App() {
           <Routes>
             <Route path="/" element={<MainPage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/students" element={<StudentListPage />} />
-            <Route path="/student-record" element={<StudentRecordPage />} />
+            <Route path="/students" element={<StudentRecordPage />} />
             <Route path="/student/:id" element={<StudentDetailPage />} />
           </Routes>
         </MainContent>

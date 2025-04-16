@@ -1,6 +1,6 @@
-import React from 'react';
-import styled from 'styled-components';
-import dummyPersonalInfo from '../../data/dummyPersonalInfo';
+import React from "react";
+import styled from "styled-components";
+import dummyPersonalInfo from "../../../data/dummyPersonalInfoData";
 
 const TabContainer = styled.div`
   display: flex;
@@ -33,15 +33,15 @@ const ProfileImage = styled.img`
 const ChangeImageButton = styled.button`
   width: 100%;
   padding: 10px;
-  background-color: #1D4EB0;
+  background-color: #1d4eb0;
   color: white;
   border: none;
   border-radius: 4px;
-  font-family: 'Pretendard-Medium', sans-serif;
+  font-family: "Pretendard-Medium", sans-serif;
   cursor: pointer;
-  
+
   &:hover {
-    background-color: #1A44A3;
+    background-color: #1a44a3;
   }
 `;
 
@@ -50,9 +50,9 @@ const InfoSection = styled.div`
 `;
 
 const SectionTitle = styled.h3`
-  font-family: 'Pretendard-Bold', sans-serif;
+  font-family: "Pretendard-Bold", sans-serif;
   font-size: 18px;
-  color: #1D4EB0;
+  color: #1d4eb0;
   margin-bottom: 16px;
   padding-bottom: 8px;
   border-bottom: 1px solid #ddd;
@@ -72,7 +72,7 @@ const TableRow = styled.tr`
 const TableHeader = styled.th`
   text-align: left;
   padding: 12px;
-  font-family: 'Pretendard-SemiBold', sans-serif;
+  font-family: "Pretendard-SemiBold", sans-serif;
   font-size: 14px;
   color: #555;
   width: 120px;
@@ -81,31 +81,32 @@ const TableHeader = styled.th`
 
 const TableData = styled.td`
   padding: 12px;
-  font-family: 'Pretendard-Regular', sans-serif;
+  font-family: "Pretendard-Regular", sans-serif;
   font-size: 14px;
   color: #333;
 `;
 
 const AcademicHistoryItem = styled.div`
   margin-bottom: 8px;
-  font-family: 'Pretendard-Regular', sans-serif;
+  font-family: "Pretendard-Regular", sans-serif;
   font-size: 14px;
   color: #333;
 `;
 
 const PersonalInfoTab = ({ student, currentUser }) => {
   if (!student) return null;
-  
+
   const personalInfo = {
     ...dummyPersonalInfo,
     name: student.name,
     grade: student.grade,
     class: student.class,
-    number: student.number
+    number: student.number,
   };
-  
+
   // Check if the current user is a teacher or the student themselves
-  const canEditProfile = currentUser.role === 'teacher' || currentUser.id === student.studentId;
+  const canEditProfile =
+    currentUser.role === "teacher" || currentUser.id === student.studentId;
 
   return (
     <TabContainer>
@@ -113,11 +114,9 @@ const PersonalInfoTab = ({ student, currentUser }) => {
         <ProfileImageContainer>
           <ProfileImage src={student.profileImage} alt={student.name} />
         </ProfileImageContainer>
-        {canEditProfile && (
-          <ChangeImageButton>이미지 변경</ChangeImageButton>
-        )}
+        {canEditProfile && <ChangeImageButton>이미지 변경</ChangeImageButton>}
       </LeftSection>
-      
+
       <RightSection>
         <InfoSection>
           <SectionTitle>인적사항</SectionTitle>
@@ -129,7 +128,10 @@ const PersonalInfoTab = ({ student, currentUser }) => {
               </TableRow>
               <TableRow>
                 <TableHeader>학년/반/번호</TableHeader>
-                <TableData>{personalInfo.grade}학년 {personalInfo.class}반 {personalInfo.number}번</TableData>
+                <TableData>
+                  {personalInfo.grade}학년 {personalInfo.class}반{" "}
+                  {personalInfo.number}번
+                </TableData>
               </TableRow>
               <TableRow>
                 <TableHeader>생년월일</TableHeader>
@@ -150,7 +152,7 @@ const PersonalInfoTab = ({ student, currentUser }) => {
             </tbody>
           </InfoTable>
         </InfoSection>
-        
+
         <InfoSection>
           <SectionTitle>과거 반 이력</SectionTitle>
           <InfoTable>
@@ -159,20 +161,19 @@ const PersonalInfoTab = ({ student, currentUser }) => {
                 <TableRow key={index}>
                   <TableHeader>{history.year}학년</TableHeader>
                   <TableData>
-                    {history.class}반 {history.number}번 (담임: {history.teacher})
+                    {history.class}반 {history.number}번 (담임:{" "}
+                    {history.teacher})
                   </TableData>
                 </TableRow>
               ))}
             </tbody>
           </InfoTable>
         </InfoSection>
-        
+
         <InfoSection>
           <SectionTitle>학적사항</SectionTitle>
           {personalInfo.academicHistory.map((item, index) => (
-            <AcademicHistoryItem key={index}>
-              • {item}
-            </AcademicHistoryItem>
+            <AcademicHistoryItem key={index}>• {item}</AcademicHistoryItem>
           ))}
         </InfoSection>
       </RightSection>

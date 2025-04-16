@@ -1,15 +1,23 @@
-// src/App.js
-
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 import styled from "styled-components";
 
 import Navbar from "./components/navigation/Navbar";
 import Sidebar from "./components/navigation/Sidebar";
+
 import MainPage from "./pages/main/MainPage";
 import LoginPage from "./pages/login/LoginPage";
+import RegisterPage from "./pages/login/RegisterPage";
 import StudentRecordPage from "./pages/studentsRecord/StudentRecordPage";
 import StudentDetailPage from "./pages/students/StudentDetailPage";
+import { useUser } from "./contexts/UserContext";
+
+import { UserProvider } from "./contexts/UserContext";
 
 const AppContainer = styled.div`
   display: flex;
@@ -18,27 +26,57 @@ const AppContainer = styled.div`
 
 const MainContent = styled.main`
   flex: 1;
-  margin-left: 240px; /* Sidebar 너비 */
-  margin-top: 60px; /* Navbar 높이 */
+  margin-left: 240px;
+  margin-top: 60px;
   background-color: #f5f5f5;
 `;
 
+const FullContent = styled.main`
+  width: 100%;
+  height: 100vh;
+`;
+
+const AppLayout = ({ children }) => {
+  const location = useLocation();
+  const { currentUser, isAuthenticated } = useUser();
+  const isAuthPage =
+    location.pathname === "/login" || location.pathname === "/register";
+
+  // 로그인, 회원가입 페이지일 경우
+  if (isAuthPage) {
+    return <FullContent>{children}</FullContent>;
+  }
+
+  // 일반 페이지일 경우 (Navbar + Sidebar 포함)
+  return (
+    <AppContainer>
+      <Navbar 
+        userName={currentUser?.name}
+        profileName={currentUser?.name}
+        profileDetail={currentUser?.profileDetail}
+        userRole={currentUser?.role}
+      />
+      <Sidebar />
+      <MainContent>{children}</MainContent>
+    </AppContainer>
+  );
+};
+
 function App() {
   return (
-    <Router>
-      <AppContainer>
-        <Navbar />
-        <Sidebar />
-        <MainContent>
+    <UserProvider>
+      <Router>
+        <AppLayout>
           <Routes>
-            <Route path="/" element={<MainPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/" element={<MainPage />} />
             <Route path="/students" element={<StudentRecordPage />} />
             <Route path="/student/:id" element={<StudentDetailPage />} />
           </Routes>
-        </MainContent>
-      </AppContainer>
-    </Router>
+        </AppLayout>
+      </Router>
+    </UserProvider>
   );
 }
 

@@ -74,7 +74,7 @@ const StudentDetailPage = () => {
       case 'score':
         return <ScoreTab student={student} />;
       case 'attendance':
-        return <AttendanceTab student={student} />;
+        return <AttendanceTab student={student} currentUser={currentUser}/>;
       case 'specialNotes':
         return <SpecialNotesTab student={student} />;
       case 'volunteer':

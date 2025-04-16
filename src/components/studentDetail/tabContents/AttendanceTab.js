@@ -200,7 +200,12 @@ const AttendanceTab = ({ student, currentUser }) => {
     return (
       <AttendanceNumber 
         clickable={isClickable}
-        onClick={() => isClickable && handleAttendanceClick(gradeData, type, reason)}
+        onClick={(e) => {
+          if (isClickable) {
+            e.preventDefault();
+            handleAttendanceClick(gradeData, type, reason);
+          }
+        }}
       >
         {count > 0 ? count : '.'}
       </AttendanceNumber>

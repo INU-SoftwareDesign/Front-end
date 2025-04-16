@@ -15,6 +15,8 @@ import LoginPage from "./pages/login/LoginPage";
 import RegisterPage from "./pages/login/RegisterPage";
 import StudentRecordPage from "./pages/studentsRecord/StudentRecordPage";
 import StudentDetailPage from "./pages/students/StudentDetailPage";
+import GradeManagementPage from "./pages/grades/GradeManagementPage";
+import GradeEditPage from "./pages/grades/GradeEditPage";
 import { useUser } from "./contexts/UserContext";
 
 import { UserProvider } from "./contexts/UserContext";
@@ -73,6 +75,8 @@ function App() {
             <Route path="/" element={<MainPage />} />
             <Route path="/students" element={<StudentRecordPage />} />
             <Route path="/student/:id" element={<StudentDetailPage />} />
+            <Route path="/grades" element={<GradeManagementPage />} />
+            <Route path="/grades/edit/:id" element={<GradeEditPage />} />
           </Routes>
         </AppLayout>
       </Router>

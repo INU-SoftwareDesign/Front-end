@@ -122,17 +122,17 @@ const Sidebar = () => {
   const menuItems = [
     { path: '/', icon: <FaHome />, label: '메인 페이지' },
     { path: '/students', icon: <FaUserGraduate />, label: '학생부' },
-    { path: '/grades', icon: <FaChartBar />, label: '성적' },
+    { path: '/grades', icon: <FaChartBar />, label: '성적 관리', roleRequired: 'teacher' },
     { path: '/counseling', icon: <FaComments />, label: '상담' },
     { path: '/feedback', icon: <FaClipboardList />, label: '피드백' },
   ];
 
   // Filter menu items based on user role
   const filteredMenuItems = currentUser ? menuItems.filter(item => {
-    // Example: Only show grades to teachers and students, not parents
-    if (item.path === '/grades' && currentUser.role === 'parent') return false;
+    // Check if the item has a roleRequired property and if the user has that role
+    if (item.roleRequired && currentUser.role !== item.roleRequired) return false;
     return true;
-  }) : menuItems;
+  }) : menuItems.filter(item => !item.roleRequired);
 
   return (
     <SidebarContainer>

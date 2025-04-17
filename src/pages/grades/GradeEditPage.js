@@ -247,6 +247,48 @@ const AddButton = styled.button`
   }
 `;
 
+const FinalGradeSummary = styled.div`
+  margin-top: 24px;
+  padding: 16px;
+  background-color: #f5f9ff;
+  border-radius: 8px;
+  border: 1px solid #d0d9ff;
+`;
+
+const SummaryTitle = styled.h3`
+  font-family: "Pretendard-SemiBold", sans-serif;
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 12px;
+`;
+
+const SummaryContent = styled.div`
+  display: flex;
+  gap: 24px;
+`;
+
+const SummaryItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const SummaryLabel = styled.span`
+  font-family: "Pretendard-Medium", sans-serif;
+  font-size: 14px;
+  color: #555;
+`;
+
+const SummaryValue = styled.span`
+  font-family: "Pretendard-SemiBold", sans-serif;
+  font-size: 16px;
+  color: #0033a0;
+  background-color: white;
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid #d0d9ff;
+`;
+
 const StatusBadge = styled.div`
   padding: 6px 12px;
   border-radius: 20px;
@@ -425,6 +467,44 @@ const GradeEditPage = () => {
     performance: 30,
   });
 
+  // Calculate grade based on percentile
+  const calculateGradeFromPercentile = (percentile) => {
+    if (percentile <= 4) return "1";
+    if (percentile <= 11) return "2";
+    if (percentile <= 23) return "3";
+    if (percentile <= 40) return "4";
+    if (percentile <= 60) return "5";
+    if (percentile <= 77) return "6";
+    if (percentile <= 89) return "7";
+    if (percentile <= 96) return "8";
+    return "9";
+  };
+
+  // Calculate final grade (weighted average of all subject grades)
+  const calculateFinalGrade = () => {
+    let totalWeightedGrade = 0;
+    let totalCredits = 0;
+    
+    subjects.forEach(subject => {
+      if (subject.grade && subject.grade !== "-" && subject.credits) {
+        totalWeightedGrade += Number(subject.grade) * Number(subject.credits);
+        totalCredits += Number(subject.credits);
+      }
+    });
+    
+    if (totalCredits === 0) return "-";
+    
+    const avgGrade = (totalWeightedGrade / totalCredits).toFixed(2);
+    return avgGrade;
+  };
+  
+  // Calculate final rank
+  const calculateFinalRank = () => {
+    // This would typically be based on the student's position in the class
+    // For now, we'll use a placeholder
+    return "12/30";
+  };
+
   // Calculate totals and averages
   const calculateTotals = () => {
     const totalCredits = subjects.reduce(
@@ -514,6 +594,17 @@ const GradeEditPage = () => {
           (Number(subject.performanceScore) * subject.ratios.performance) / 100
         ).toFixed(2);
         updatedSubjects[index].calculatedScore = calculatedScore;
+        
+        // Calculate rank and grade when score is calculated
+        // For this example, we'll use a simplified approach
+        // In a real application, this would be based on the student's position in the class
+        const totalStudents = 30; // Assuming 30 students in the class
+        const randomRank = Math.floor(Math.random() * totalStudents) + 1;
+        updatedSubjects[index].rank = `${randomRank}/${totalStudents}`;
+        
+        // Calculate grade based on percentile
+        const percentile = (randomRank / totalStudents) * 100;
+        updatedSubjects[index].grade = calculateGradeFromPercentile(percentile);
       }
     }
 
@@ -561,6 +652,15 @@ const GradeEditPage = () => {
         (Number(subject.performanceScore) * tempRatios.performance) / 100
       ).toFixed(2);
       updatedSubjects[currentSubjectIndex].calculatedScore = calculatedScore;
+      
+      // Update rank and grade when ratio changes
+      const totalStudents = 30; // Assuming 30 students in the class
+      const randomRank = Math.floor(Math.random() * totalStudents) + 1;
+      updatedSubjects[currentSubjectIndex].rank = `${randomRank}/${totalStudents}`;
+      
+      // Calculate grade based on percentile
+      const percentile = (randomRank / totalStudents) * 100;
+      updatedSubjects[currentSubjectIndex].grade = calculateGradeFromPercentile(percentile);
     }
 
     setSubjects(updatedSubjects);
@@ -687,7 +787,8 @@ const GradeEditPage = () => {
                 <TableHeader>기말고사</TableHeader>
                 <TableHeader>수행평가</TableHeader>
                 <TableHeader>환산점수</TableHeader>
-                <TableHeader>석차/등급</TableHeader>
+                <TableHeader>석차</TableHeader>
+                <TableHeader>등급</TableHeader>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -765,6 +866,7 @@ const GradeEditPage = () => {
                     </ScoreButton>
                   </TableCell>
                   <TableCell>{subject.rank || "-"}</TableCell>
+                  <TableCell>{subject.grade || "-"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -777,6 +879,7 @@ const GradeEditPage = () => {
                 <TableCell>{totals.totalPerformance}</TableCell>
                 <TableCell>{Number(totals.totalCalculated).toFixed(2)}</TableCell>
                 <TableCell>-</TableCell>
+                <TableCell>-</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>평균</TableCell>
@@ -785,12 +888,27 @@ const GradeEditPage = () => {
                 <TableCell>{totals.avgFinal}</TableCell>
                 <TableCell>{totals.avgPerformance}</TableCell>
                 <TableCell>{totals.avgCalculated}</TableCell>
-                <TableCell>112/3</TableCell>
+                <TableCell>-</TableCell>
+                <TableCell>{calculateFinalGrade()}</TableCell>
               </TableRow>
             </TableFoot>
           </ScoreTable>
 
           <AddButton onClick={addSubject}>+ 과목 추가</AddButton>
+          
+          <FinalGradeSummary>
+            <SummaryTitle>최종 성적 요약</SummaryTitle>
+            <SummaryContent>
+              <SummaryItem>
+                <SummaryLabel>최종 석차:</SummaryLabel>
+                <SummaryValue>{calculateFinalRank()}</SummaryValue>
+              </SummaryItem>
+              <SummaryItem>
+                <SummaryLabel>최종 등급:</SummaryLabel>
+                <SummaryValue>{calculateFinalGrade()}</SummaryValue>
+              </SummaryItem>
+            </SummaryContent>
+          </FinalGradeSummary>
         </LeftSection>
 
         <RightSection>

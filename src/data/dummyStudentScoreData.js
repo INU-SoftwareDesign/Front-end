@@ -1,9 +1,12 @@
-const studentScoreData = {
+const dummyStudentScoreData = {
   // Each student's score data is stored by their ID
   1: [
     {
       grade: '1학년',
       semester: '1학기',
+      totalStudents: '112',
+      studentRank: '12/112',
+      finalGrade: '2.14',
       scores: [
         {
           subject: '국어',
@@ -12,7 +15,8 @@ const studentScoreData = {
           final: 75.2,
           task: 20,
           total: 85.52,
-          rank: '14(112)/2'
+          rank: '14/112',
+          grade: '2'
         },
         {
           subject: '수학',
@@ -21,7 +25,8 @@ const studentScoreData = {
           final: 89.5,
           task: 18,
           total: 88.94,
-          rank: '8(112)/1'
+          rank: '8/112',
+          grade: '1'
         },
         {
           subject: '영어',
@@ -30,7 +35,8 @@ const studentScoreData = {
           final: 82.1,
           task: 19,
           total: 81.63,
-          rank: '22(112)/3'
+          rank: '22/112',
+          grade: '3'
         },
         {
           subject: '과학',
@@ -39,7 +45,8 @@ const studentScoreData = {
           final: 88.7,
           task: 17,
           total: 84.97,
-          rank: '16(112)/2'
+          rank: '16/112',
+          grade: '2'
         },
         {
           subject: '사회',
@@ -48,7 +55,8 @@ const studentScoreData = {
           final: 78.9,
           task: 16,
           total: 76.82,
-          rank: '32(112)/4'
+          rank: '32/112',
+          grade: '4'
         },
         {
           subject: '음악',
@@ -57,7 +65,8 @@ const studentScoreData = {
           final: 92.5,
           task: 20,
           total: 94.25,
-          rank: '3(112)/1'
+          rank: '3/112',
+          grade: '1'
         },
         {
           subject: '미술',
@@ -66,13 +75,17 @@ const studentScoreData = {
           final: 90.0,
           task: 19,
           total: 89.3,
-          rank: '10(112)/1'
+          rank: '10/112',
+          grade: '1'
         }
       ]
     },
     {
       grade: '1학년',
       semester: '2학기',
+      totalStudents: '112',
+      studentRank: '9/112',
+      finalGrade: '1.86',
       scores: [
         {
           subject: '국어',
@@ -215,4 +228,4 @@ const studentScoreData = {
   ]
 };
 
-export default studentScoreData;
+export default dummyStudentScoreData;

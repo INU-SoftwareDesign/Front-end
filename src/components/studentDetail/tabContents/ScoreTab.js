@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import studentScoreData from '../../../data/studentScoreData';
+import dummyStudentScoreData from '../../../data/dummyStudentScoreData';
 import ScoreTable from '../ScoreTable';
 import ScoreRadarChart from '../ScoreRadarChart';
 
@@ -93,7 +93,7 @@ const ScoreTab = ({ student }) => {
   // Load student score data
   useEffect(() => {
     if (student && student.id) {
-      const scores = studentScoreData[student.id] || [];
+      const scores = dummyStudentScoreData[student.id] || [];
       setStudentScores(scores);
       
       // Set available filter options

@@ -2,7 +2,9 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
-import { useUser, dummyUsers } from "../../contexts/UserContext";
+import useUserStore from "../../stores/useUserStore";
+import { dummyUsers } from "../../contexts/UserContext"; // Still using dummy users from context for now
+import logoImage from "../../assets/logo/soseol_logo.png";
 
 // 페이지 레이아웃 스타일
 const PageContainer = styled.div`
@@ -16,13 +18,21 @@ const PageContainer = styled.div`
 const LogoContainer = styled.div`
   padding: 20px;
   margin-left: 20px;
+  display: flex;
+  align-items: center;
 `;
 
-const LogoText = styled.h1`
-  color: white;
-  font-family: 'Pretendard-Bold', sans-serif;
-  font-size: 24px;
-  margin: 0;
+const LogoImage = styled.img`
+  height: 50px;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.7));
+  background-color: rgba(255, 255, 255, 0.15);
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
 `;
 
 const LoginContainer = styled.div`
@@ -193,7 +203,9 @@ const mockLogin = (userType, id, password) => {
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useUser();
+  const login = useUserStore(state => state.login);
+  const devLogin = useUserStore(state => state.devLogin);
+  const isAuthenticated = useUserStore(state => state.isAuthenticated);
   
   // State for form fields
   const [userType, setUserType] = useState('teacher'); // Default to teacher
@@ -263,7 +275,7 @@ function LoginPage() {
       // Handle successful login
       console.log('로그인 성공:', response);
       
-      // Use the login function from UserContext
+      // Use the login function from Zustand store
       login(response.userData);
       
       // Redirect to main page (or dashboard)
@@ -280,7 +292,7 @@ function LoginPage() {
   return (
     <PageContainer>
       <LogoContainer>
-        <LogoText>소설고등학교</LogoText>
+        <LogoImage src={logoImage} alt="소설고등학교 로고" />
       </LogoContainer>
       
       <LoginContainer>

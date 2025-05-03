@@ -1,17 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
-import dummyCounselingData from '../../../data/dummyCounselingData';
 
-const TabContainer = styled.div`
-  padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-  min-height: 300px;
+// Styled Components
+const Container = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 `;
 
 const TableContainer = styled.div`
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
   overflow-x: auto;
-  margin-top: 20px;
+`;
+
+const TableTitle = styled.h2`
+  font-family: 'Pretendard-SemiBold', sans-serif;
+  color: #333;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
 `;
 
 const CounselingTable = styled.table`
@@ -46,17 +55,23 @@ const TableCell = styled.td`
   text-align: center;
 `;
 
-const DetailButton = styled.button`
-  background-color: #1D4EB0;
+const ActionButton = styled.button`
+  background-color: ${props => props.color || '#1D4EB0'};
   color: white;
   border: none;
   padding: 6px 12px;
   border-radius: 4px;
   cursor: pointer;
   font-family: 'Pretendard-Medium', sans-serif;
+  margin: 0 4px;
   
   &:hover {
-    background-color: #1A44A3;
+    opacity: 0.9;
+  }
+  
+  &:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
   }
 `;
 
@@ -68,14 +83,30 @@ const StatusBadge = styled.span`
   background-color: ${props => {
     switch(props.status) {
       case '완료': return '#4CAF50';
+      case '예약확정': return '#2196F3';
       case '대기': return '#FFC107';
-      case '보류': return '#F44336';
       default: return '#9E9E9E';
     }
   }};
   color: white;
 `;
 
+const EmptyState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+`;
+
+const EmptyStateText = styled.p`
+  font-family: 'Pretendard-Medium', sans-serif;
+  font-size: 18px;
+  color: #666;
+`;
+
+// Modal Components
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -176,15 +207,11 @@ const Select = styled.select`
   border-radius: 4px;
   font-family: 'Pretendard-Regular', sans-serif;
   margin-top: 8px;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-family: 'Pretendard-Regular', sans-serif;
-  margin-top: 8px;
+  
+  option:disabled {
+    color: #999;
+    background-color: #f5f5f5;
+  }
 `;
 
 const ButtonContainer = styled.div`
@@ -225,57 +252,49 @@ const CancelButton = styled(Button)`
   }
 `;
 
-const EmptyState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
-  text-align: center;
-`;
-
-const EmptyStateText = styled.p`
-  font-family: 'Pretendard-Medium', sans-serif;
-  font-size: 18px;
-  color: #666;
-`;
-
-const CounselingTab = ({ student, currentUser }) => {
-  const [counselingRecords, setCounselingRecords] = useState([]);
+const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecords }) => {
   const [selectedCounseling, setSelectedCounseling] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedCounseling, setEditedCounseling] = useState({});
+  const [availableTimes, setAvailableTimes] = useState([
+    "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", 
+    "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"
+  ]);
+  const [bookedTimes, setBookedTimes] = useState([]);
   
-  useEffect(() => {
-    if (student) {
-      // Filter counseling records for the current student
-      const studentCounselingRecords = dummyCounselingData.filter(
-        record => record.studentId === student.id
-      );
-      setCounselingRecords(studentCounselingRecords);
-    }
-  }, [student]);
-
+  // Sort counseling records by date (newest first)
+  const sortedRecords = [...counselingRecords].sort((a, b) => {
+    return new Date(b.counselingDate) - new Date(a.counselingDate);
+  });
+  
+  // Handle detail button click
   const handleDetailClick = (counseling) => {
     setSelectedCounseling(counseling);
-    setEditedCounseling(counseling);
+    setEditedCounseling({...counseling});
     setIsModalOpen(true);
     setIsEditing(false);
+    
+    // Get booked times for the counseling date
+    // In a real app, this would be fetched from an API
+    const bookedForDate = Object.entries(dummyBookedTimes)
+      .find(([date]) => date === counseling.counselingDate);
+    
+    if (bookedForDate) {
+      setBookedTimes(bookedForDate[1].filter(time => time !== counseling.counselingTime));
+    } else {
+      setBookedTimes([]);
+    }
   };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedCounseling(null);
-    setIsEditing(false);
-  };
-
+  
+  // Handle edit button click
   const handleEditClick = () => {
     setIsEditing(true);
   };
-
+  
+  // Handle save button click
   const handleSaveClick = () => {
-    // In a real application, this would make an API call to update the counseling record
+    // In a real app, this would make an API call to update the counseling record
     setCounselingRecords(prevRecords => 
       prevRecords.map(record => 
         record.id === editedCounseling.id ? editedCounseling : record
@@ -284,7 +303,19 @@ const CounselingTab = ({ student, currentUser }) => {
     setSelectedCounseling(editedCounseling);
     setIsEditing(false);
   };
-
+  
+  // Handle cancel button click
+  const handleCancelCounseling = () => {
+    if (window.confirm('상담 예약을 취소하시겠습니까?')) {
+      // In a real app, this would make an API call to cancel the counseling
+      setCounselingRecords(prevRecords => 
+        prevRecords.filter(record => record.id !== selectedCounseling.id)
+      );
+      closeModal();
+    }
+  };
+  
+  // Handle input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setEditedCounseling(prev => ({
@@ -292,34 +323,50 @@ const CounselingTab = ({ student, currentUser }) => {
       [name]: value
     }));
   };
-
-  // Check if the current user is the counselor of the selected counseling
-  const isUserCounselor = selectedCounseling && 
-    currentUser && 
-    currentUser.role === 'teacher' && 
-    selectedCounseling.counselorName === '김교수'; // In a real app, this would compare with the actual user name
-
-  if (!student) return null;
+  
+  // Close modal
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedCounseling(null);
+    setIsEditing(false);
+  };
+  
+  // Dummy booked times for demonstration
+  const dummyBookedTimes = {
+    "2025-05-05": ["10:00", "13:30", "15:00"],
+    "2025-05-06": ["09:30", "11:00", "14:30"],
+    "2025-05-10": ["09:00", "13:00", "16:30"],
+    "2025-05-12": ["10:30", "15:30"],
+    "2025-05-15": ["11:30", "14:00", "17:00"]
+  };
+  
+  // Check if counseling can be canceled or modified
+  const canModify = (counseling) => {
+    return counseling.status !== '완료';
+  };
   
   return (
-    <TabContainer>
+    <Container>
       <TableContainer>
-        {counselingRecords.length > 0 ? (
+        <TableTitle>상담 내역</TableTitle>
+        
+        {sortedRecords.length > 0 ? (
           <CounselingTable>
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>번호</TableHeaderCell>
-                <TableHeaderCell>상담일자</TableHeaderCell>
-                <TableHeaderCell>상담시간</TableHeaderCell>
+                <TableHeaderCell>상담 날짜</TableHeaderCell>
+                <TableHeaderCell>상담 시간</TableHeaderCell>
                 <TableHeaderCell>상담자명</TableHeaderCell>
                 <TableHeaderCell>상담종류</TableHeaderCell>
                 <TableHeaderCell>상담유형</TableHeaderCell>
                 <TableHeaderCell>상태</TableHeaderCell>
                 <TableHeaderCell>상세보기</TableHeaderCell>
+                <TableHeaderCell>예약취소</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <tbody>
-              {counselingRecords.map((counseling, index) => (
+              {sortedRecords.map((counseling, index) => (
                 <TableRow key={counseling.id}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{counseling.counselingDate}</TableCell>
@@ -333,9 +380,21 @@ const CounselingTab = ({ student, currentUser }) => {
                     </StatusBadge>
                   </TableCell>
                   <TableCell>
-                    <DetailButton onClick={() => handleDetailClick(counseling)}>
+                    <ActionButton onClick={() => handleDetailClick(counseling)}>
                       상세보기
-                    </DetailButton>
+                    </ActionButton>
+                  </TableCell>
+                  <TableCell>
+                    <ActionButton 
+                      color="#f44336"
+                      onClick={() => {
+                        setSelectedCounseling(counseling);
+                        handleCancelCounseling();
+                      }}
+                      disabled={!canModify(counseling)}
+                    >
+                      취소
+                    </ActionButton>
                   </TableCell>
                 </TableRow>
               ))}
@@ -344,12 +403,12 @@ const CounselingTab = ({ student, currentUser }) => {
         ) : (
           <EmptyState>
             <EmptyStateText>
-              {student.name} 학생의 상담 내역이 없습니다.
+              상담 내역이 없습니다.
             </EmptyStateText>
           </EmptyState>
         )}
       </TableContainer>
-
+      
       {isModalOpen && selectedCounseling && (
         <ModalOverlay>
           <ModalContainer>
@@ -357,17 +416,28 @@ const CounselingTab = ({ student, currentUser }) => {
               <ModalTitle>상담 상세 정보</ModalTitle>
               <CloseButton onClick={closeModal}>&times;</CloseButton>
             </ModalHeader>
-
+            
             <InfoSection>
-              <InfoTitle>학생 정보</InfoTitle>
+              <InfoTitle>{currentUser.role === 'student' ? '학생 정보' : '학생/학부모 정보'}</InfoTitle>
               <InfoGrid>
+                {currentUser.role === 'parent' && (
+                  <InfoItem>
+                    <InfoLabel>학부모 이름</InfoLabel>
+                    <InfoValue>{currentUser.name}</InfoValue>
+                  </InfoItem>
+                )}
                 <InfoItem>
-                  <InfoLabel>이름</InfoLabel>
-                  <InfoValue>{student.name}</InfoValue>
+                  <InfoLabel>학생 이름</InfoLabel>
+                  <InfoValue>{currentUser.role === 'student' ? currentUser.name : selectedCounseling.studentName}</InfoValue>
                 </InfoItem>
                 <InfoItem>
                   <InfoLabel>학년/반/번호</InfoLabel>
-                  <InfoValue>{student.grade}학년 {student.class}반 {student.number}번</InfoValue>
+                  <InfoValue>
+                    {currentUser.role === 'student' 
+                      ? `${currentUser.grade}학년 ${currentUser.class}반 ${currentUser.number}번`
+                      : `${selectedCounseling.grade}학년 ${selectedCounseling.class}반 ${selectedCounseling.number}번`
+                    }
+                  </InfoValue>
                 </InfoItem>
                 <InfoItem>
                   <InfoLabel>연락처</InfoLabel>
@@ -375,52 +445,37 @@ const CounselingTab = ({ student, currentUser }) => {
                 </InfoItem>
               </InfoGrid>
             </InfoSection>
-
+            
             <InfoSection>
               <InfoTitle>상담 정보</InfoTitle>
               <InfoGrid>
                 <InfoItem>
-                  <InfoLabel>상담일자</InfoLabel>
-                  {isEditing ? (
-                    <Input
-                      type="date"
-                      name="counselingDate"
-                      value={editedCounseling.counselingDate}
-                      onChange={handleInputChange}
-                    />
-                  ) : (
-                    <InfoValue>{selectedCounseling.counselingDate}</InfoValue>
-                  )}
+                  <InfoLabel>상담 날짜</InfoLabel>
+                  <InfoValue>{selectedCounseling.counselingDate}</InfoValue>
                 </InfoItem>
                 <InfoItem>
-                  <InfoLabel>상담시간</InfoLabel>
+                  <InfoLabel>상담 시간</InfoLabel>
                   {isEditing ? (
-                    <Input
-                      type="time"
+                    <Select
                       name="counselingTime"
                       value={editedCounseling.counselingTime}
                       onChange={handleInputChange}
-                    />
-                  ) : (
-                    <InfoValue>{selectedCounseling.counselingTime}</InfoValue>
-                  )}
-                </InfoItem>
-                <InfoItem>
-                  <InfoLabel>상담상태</InfoLabel>
-                  {isEditing ? (
-                    <Select
-                      name="status"
-                      value={editedCounseling.status}
-                      onChange={handleInputChange}
                     >
-                      <option value="완료">완료</option>
-                      <option value="대기">대기</option>
-                      <option value="보류">보류</option>
+                      <option value={selectedCounseling.counselingTime}>
+                        {selectedCounseling.counselingTime} (현재)
+                      </option>
+                      {availableTimes.map((time) => (
+                        <option 
+                          key={time} 
+                          value={time}
+                          disabled={bookedTimes.includes(time)}
+                        >
+                          {time}
+                        </option>
+                      ))}
                     </Select>
                   ) : (
-                    <StatusBadge status={selectedCounseling.status}>
-                      {selectedCounseling.status}
-                    </StatusBadge>
+                    <InfoValue>{selectedCounseling.counselingTime}</InfoValue>
                   )}
                 </InfoItem>
                 <InfoItem>
@@ -428,51 +483,54 @@ const CounselingTab = ({ student, currentUser }) => {
                   <InfoValue>{selectedCounseling.counselorName}</InfoValue>
                 </InfoItem>
                 <InfoItem>
-                  <InfoLabel>상담장소</InfoLabel>
-                  {isEditing ? (
-                    <Input
-                      type="text"
-                      name="location"
-                      value={editedCounseling.location}
-                      onChange={handleInputChange}
-                    />
-                  ) : (
-                    <InfoValue>{selectedCounseling.location}</InfoValue>
-                  )}
+                  <InfoLabel>상담 장소</InfoLabel>
+                  <InfoValue>{selectedCounseling.location || '미정'}</InfoValue>
                 </InfoItem>
                 <InfoItem>
-                  <InfoLabel>상담유형</InfoLabel>
+                  <InfoLabel>상담 종류</InfoLabel>
+                  <InfoValue>{selectedCounseling.counselingType}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>상담 유형</InfoLabel>
                   <InfoValue>{selectedCounseling.counselingCategory}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>상담 상태</InfoLabel>
+                  <StatusBadge status={selectedCounseling.status}>
+                    {selectedCounseling.status}
+                  </StatusBadge>
                 </InfoItem>
               </InfoGrid>
             </InfoSection>
-
+            
             <InfoSection>
-              <InfoTitle>상담 신청 내용</InfoTitle>
-              <InfoValue>{selectedCounseling.requestContent}</InfoValue>
-            </InfoSection>
-
-            <InfoSection>
-              <InfoTitle>상담 결과</InfoTitle>
+              <InfoTitle>상담 내용</InfoTitle>
               {isEditing ? (
                 <TextArea
-                  name="resultContent"
-                  value={editedCounseling.resultContent}
+                  name="requestContent"
+                  value={editedCounseling.requestContent}
                   onChange={handleInputChange}
-                  placeholder="상담 결과를 입력하세요."
+                  placeholder="상담 내용을 입력하세요."
                 />
               ) : (
-                <InfoValue>
-                  {selectedCounseling.resultContent || "상담 결과가 아직 입력되지 않았습니다."}
-                </InfoValue>
+                <InfoValue>{selectedCounseling.requestContent}</InfoValue>
               )}
             </InfoSection>
-
+            
+            {selectedCounseling.status === '완료' && (
+              <InfoSection>
+                <InfoTitle>상담 결과</InfoTitle>
+                <InfoValue>
+                  {selectedCounseling.resultContent || '상담 결과가 아직 입력되지 않았습니다.'}
+                </InfoValue>
+              </InfoSection>
+            )}
+            
             <ButtonContainer>
-              {isUserCounselor && !isEditing && (
-                <DetailButton onClick={handleEditClick}>
+              {canModify(selectedCounseling) && !isEditing && (
+                <ActionButton onClick={handleEditClick}>
                   수정하기
-                </DetailButton>
+                </ActionButton>
               )}
               {isEditing && (
                 <>
@@ -484,12 +542,17 @@ const CounselingTab = ({ student, currentUser }) => {
                   </SaveButton>
                 </>
               )}
+              {canModify(selectedCounseling) && (
+                <CancelButton onClick={handleCancelCounseling}>
+                  예약 취소
+                </CancelButton>
+              )}
             </ButtonContainer>
           </ModalContainer>
         </ModalOverlay>
       )}
-    </TabContainer>
+    </Container>
   );
 };
 
-export default CounselingTab;
+export default HistoryTabContent;

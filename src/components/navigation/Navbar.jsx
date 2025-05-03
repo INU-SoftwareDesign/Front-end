@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaBell, FaUser, FaCaretDown, FaSignOutAlt, FaCog, FaUserCircle } from 'react-icons/fa';
-import { useUser } from '../../contexts/UserContext';
+import useUserStore from '../../stores/useUserStore';
+import logoImage from '../../assets/logo/soseol_logo.png';
 
 const NavContainer = styled.nav`
   display: flex;
@@ -21,18 +22,19 @@ const NavContainer = styled.nav`
 `;
 
 const Logo = styled(Link)`
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #1D4EB0;
   text-decoration: none;
-  font-family: 'Pretendard-Bold', sans-serif;
   display: flex;
   align-items: center;
-  transition: color 0.2s ease;
+  transition: transform 0.2s ease;
   
   &:hover {
-    color: #4557F1;
+    transform: scale(1.02);
   }
+`;
+
+const LogoImage = styled.img`
+  height: 40px;
+  width: auto;
 `;
 
 const NavItems = styled.div`
@@ -374,14 +376,15 @@ const ProfileMenuDivider = styled.div`
 // Navbar component that accepts user information as props
 const Navbar = ({ userName, profileName, profileDetail, userRole }) => {
   const navigate = useNavigate();
-  const { currentUser, logout } = useUser();
+  const currentUser = useUserStore(state => state.currentUser);
+  const logout = useUserStore(state => state.logout);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
   
-  // Use props or fallback to currentUser from context
+  // Use props or fallback to currentUser from store
   const displayName = userName || (currentUser ? currentUser.name : '사용자');
   const displayProfileName = profileName || (currentUser ? currentUser.name : '사용자');
   const displayProfileDetail = profileDetail || (currentUser ? currentUser.profileDetail : '');
@@ -417,8 +420,10 @@ const Navbar = ({ userName, profileName, profileDetail, userRole }) => {
   const handleLogout = () => {
     // Close the modal
     setIsLogoutModalOpen(false);
-    // Call logout from context
+    
+    // Call logout from the store
     logout();
+    
     // Redirect to login page
     navigate('/login');
   };
@@ -462,7 +467,9 @@ const Navbar = ({ userName, profileName, profileDetail, userRole }) => {
   return (
     <>
     <NavContainer>
-      <Logo to="/">소설고등학교</Logo>
+      <Logo to="/">
+        <LogoImage src={logoImage} alt="소설고등학교 로고" />
+      </Logo>
       <NavItems>
         <NavItem ref={notificationRef}>
           <IconWrapper onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}>

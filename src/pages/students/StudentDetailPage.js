@@ -82,7 +82,7 @@ const StudentDetailPage = () => {
       case 'reading':
         return <ReadingTab student={student} />;
       case 'counseling':
-        return <CounselingTab student={student} />;
+        return <CounselingTab student={student} currentUser={currentUser} />;
       case 'feedback':
         return <FeedbackTab student={student} />;
       default:

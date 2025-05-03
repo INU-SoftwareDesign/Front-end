@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
-import { useUser, dummyUsers } from "../../contexts/UserContext";
+import useUserStore from "../../stores/useUserStore";
+import { dummyUsers } from "../../contexts/UserContext"; // Still using dummy users from context for now
 import logoImage from "../../assets/logo/soseol_logo.png";
 
 // 페이지 레이아웃 스타일
@@ -202,7 +203,9 @@ const mockLogin = (userType, id, password) => {
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useUser();
+  const login = useUserStore(state => state.login);
+  const devLogin = useUserStore(state => state.devLogin);
+  const isAuthenticated = useUserStore(state => state.isAuthenticated);
   
   // State for form fields
   const [userType, setUserType] = useState('teacher'); // Default to teacher
@@ -272,7 +275,7 @@ function LoginPage() {
       // Handle successful login
       console.log('로그인 성공:', response);
       
-      // Use the login function from UserContext
+      // Use the login function from Zustand store
       login(response.userData);
       
       // Redirect to main page (or dashboard)

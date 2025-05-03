@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -19,9 +19,9 @@ import GradeManagementPage from "./pages/grades/GradeManagementPage";
 import GradeEditPage from "./pages/grades/GradeEditPage";
 import CounselingPage from "./pages/counseling/CounselingPage";
 import StudentCounselingPage from "./pages/counseling/StudentCounselingPage";
-import { useUser } from "./contexts/UserContext";
 
-import { UserProvider } from "./contexts/UserContext";
+// Import Zustand store
+import useUserStore from "./stores/useUserStore";
 
 const AppContainer = styled.div`
   display: flex;
@@ -42,7 +42,8 @@ const FullContent = styled.main`
 
 const AppLayout = ({ children }) => {
   const location = useLocation();
-  const { currentUser, isAuthenticated } = useUser();
+  const currentUser = useUserStore(state => state.currentUser);
+  const isAuthenticated = useUserStore(state => state.isAuthenticated);
   const isAuthPage =
     location.pathname === "/login" || location.pathname === "/register";
 
@@ -67,24 +68,30 @@ const AppLayout = ({ children }) => {
 };
 
 function App() {
+  // Check if user is already logged in from localStorage
+  const checkAuth = useUserStore(state => state.checkAuth);
+  
+  useEffect(() => {
+    // Try to restore user session from localStorage
+    checkAuth();
+  }, [checkAuth]);
+  
   return (
-    <UserProvider>
-      <Router>
-        <AppLayout>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/" element={<MainPage />} />
-            <Route path="/students" element={<StudentRecordPage />} />
-            <Route path="/student/:id" element={<StudentDetailPage />} />
-            <Route path="/grades" element={<GradeManagementPage />} />
-            <Route path="/grades/edit/:id" element={<GradeEditPage />} />
-            <Route path="/counseling" element={<CounselingPage />} />
-            <Route path="/student-counseling" element={<StudentCounselingPage />} />
-          </Routes>
-        </AppLayout>
-      </Router>
-    </UserProvider>
+    <Router>
+      <AppLayout>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/" element={<MainPage />} />
+          <Route path="/students" element={<StudentRecordPage />} />
+          <Route path="/student/:id" element={<StudentDetailPage />} />
+          <Route path="/grades" element={<GradeManagementPage />} />
+          <Route path="/grades/edit/:id" element={<GradeEditPage />} />
+          <Route path="/counseling" element={<CounselingPage />} />
+          <Route path="/student-counseling" element={<StudentCounselingPage />} />
+        </Routes>
+      </AppLayout>
+    </Router>
   );
 }
 

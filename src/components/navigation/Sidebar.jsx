@@ -2,7 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { Link, useLocation } from 'react-router-dom';
 import { FaHome, FaUserGraduate, FaChartBar, FaComments, FaClipboardList, FaCog, FaCalendarAlt, FaUsers } from 'react-icons/fa';
-import { useUser } from '../../contexts/UserContext';
+import useUserStore from '../../stores/useUserStore';
 
 const SidebarContainer = styled.div`
   position: fixed;
@@ -105,7 +105,7 @@ const SidebarFooter = styled.div`
 
 const Sidebar = () => {
   const location = useLocation();
-  const { currentUser } = useUser();
+  const currentUser = useUserStore(state => state.currentUser);
   
   // Format role for display
   const formatRole = (role) => {

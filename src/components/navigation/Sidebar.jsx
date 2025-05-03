@@ -119,13 +119,21 @@ const Sidebar = () => {
     }
   };
 
-  const menuItems = [
+  // Define base menu items
+  const baseMenuItems = [
     { path: '/', icon: <FaHome />, label: '메인 페이지' },
     { path: '/students', icon: <FaUserGraduate />, label: '학생부' },
     { path: '/grades', icon: <FaChartBar />, label: '성적 관리', roleRequired: 'teacher' },
-    { path: '/counseling', icon: <FaComments />, label: '상담' },
     { path: '/feedback', icon: <FaClipboardList />, label: '피드백' },
   ];
+  
+  // Add role-specific counseling menu item
+  const counselingMenuItem = currentUser && currentUser.role === 'teacher'
+    ? { path: '/counseling', icon: <FaComments />, label: '상담' }
+    : { path: '/student-counseling', icon: <FaComments />, label: '상담' };
+  
+  // Combine all menu items
+  const menuItems = [...baseMenuItems.slice(0, 3), counselingMenuItem, ...baseMenuItems.slice(3)];
 
   // Filter menu items based on user role
   const filteredMenuItems = currentUser ? menuItems.filter(item => {

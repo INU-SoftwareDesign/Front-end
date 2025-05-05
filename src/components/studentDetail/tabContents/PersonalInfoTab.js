@@ -1,6 +1,5 @@
 import React from "react";
 import styled from "styled-components";
-import dummyPersonalInfo from "../../../data/dummyPersonalInfoData";
 
 const TabContainer = styled.div`
   display: flex;
@@ -95,13 +94,17 @@ const AcademicHistoryItem = styled.div`
 
 const PersonalInfoTab = ({ student, currentUser }) => {
   if (!student) return null;
-
-  const personalInfo = {
-    ...dummyPersonalInfo,
-    name: student.name,
-    grade: student.grade,
-    class: student.class,
-    number: student.number,
+  
+  // Format date for display (YYYY-MM-DD to YYYY년 MM월 DD일)
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    
+    try {
+      const [year, month, day] = dateString.split('-');
+      return `${year}년 ${month}월 ${day}일`;
+    } catch (error) {
+      return dateString;
+    }
   };
 
   // Check if the current user is a teacher or the student themselves
@@ -112,7 +115,10 @@ const PersonalInfoTab = ({ student, currentUser }) => {
     <TabContainer>
       <LeftSection>
         <ProfileImageContainer>
-          <ProfileImage src={student.profileImage} alt={student.name} />
+          <ProfileImage 
+            src={student.profileImage || 'https://cdn-icons-png.flaticon.com/512/8847/8847419.png'} 
+            alt={student.name} 
+          />
         </ProfileImageContainer>
         {canEditProfile && <ChangeImageButton>이미지 변경</ChangeImageButton>}
       </LeftSection>
@@ -124,30 +130,34 @@ const PersonalInfoTab = ({ student, currentUser }) => {
             <tbody>
               <TableRow>
                 <TableHeader>이름</TableHeader>
-                <TableData>{personalInfo.name}</TableData>
+                <TableData>{student.name}</TableData>
+              </TableRow>
+              <TableRow>
+                <TableHeader>학번</TableHeader>
+                <TableData>{student.studentId}</TableData>
               </TableRow>
               <TableRow>
                 <TableHeader>학년/반/번호</TableHeader>
                 <TableData>
-                  {personalInfo.grade}학년 {personalInfo.class}반{" "}
-                  {personalInfo.number}번
+                  {student.grade}학년 {student.class}반{" "}
+                  {student.number}번
                 </TableData>
               </TableRow>
               <TableRow>
                 <TableHeader>생년월일</TableHeader>
-                <TableData>{personalInfo.birthdate}</TableData>
+                <TableData>{formatDate(student.birthDate)}</TableData>
               </TableRow>
               <TableRow>
                 <TableHeader>주소</TableHeader>
-                <TableData>{personalInfo.address}</TableData>
+                <TableData>{student.address}</TableData>
               </TableRow>
               <TableRow>
                 <TableHeader>부</TableHeader>
-                <TableData>{personalInfo.father}</TableData>
+                <TableData>{student.fatherName}</TableData>
               </TableRow>
               <TableRow>
                 <TableHeader>모</TableHeader>
-                <TableData>{personalInfo.mother}</TableData>
+                <TableData>{student.motherName}</TableData>
               </TableRow>
             </tbody>
           </InfoTable>
@@ -157,12 +167,12 @@ const PersonalInfoTab = ({ student, currentUser }) => {
           <SectionTitle>과거 반 이력</SectionTitle>
           <InfoTable>
             <tbody>
-              {personalInfo.classHistory.map((history, index) => (
+              {student.history && student.history.map((history, index) => (
                 <TableRow key={index}>
-                  <TableHeader>{history.year}학년</TableHeader>
+                  <TableHeader>{history.grade}학년</TableHeader>
                   <TableData>
                     {history.class}반 {history.number}번 (담임:{" "}
-                    {history.teacher})
+                    {history.homeroomTeacher})
                   </TableData>
                 </TableRow>
               ))}
@@ -172,7 +182,7 @@ const PersonalInfoTab = ({ student, currentUser }) => {
 
         <InfoSection>
           <SectionTitle>학적사항</SectionTitle>
-          {personalInfo.academicHistory.map((item, index) => (
+          {student.academicRecords && student.academicRecords.map((item, index) => (
             <AcademicHistoryItem key={index}>• {item}</AcademicHistoryItem>
           ))}
         </InfoSection>

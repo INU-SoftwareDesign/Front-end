@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { addAttendanceRecord } from '../../api/attendanceApi';
 import styled from 'styled-components';
 
 const ModalOverlay = styled.div`
@@ -206,15 +207,31 @@ const AttendanceModal = ({
   canEdit,
   studentName,
   grade,
+  studentId,
   onSave
 }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     attendanceType: attendanceType || 'absent',
     reasonType: reasonType || 'illness',
     date: new Date().toISOString().split('T')[0],
     reason: ''
   });
+  
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        attendanceType: attendanceType || 'absent',
+        reasonType: reasonType || 'illness',
+        date: new Date().toISOString().split('T')[0],
+        reason: ''
+      });
+      setError(null);
+    }
+  }, [isOpen, attendanceType, reasonType]);
   
   if (!isOpen) return null;
   
@@ -239,19 +256,58 @@ const AttendanceModal = ({
     }));
   };
   
-  const handleSubmit = () => {
-    onSave({
-      ...formData,
-      attendanceType: formData.attendanceType || attendanceType,
-      reasonType: formData.reasonType || reasonType
-    });
-    setIsEditing(false);
-    setFormData({
-      attendanceType: attendanceType || 'absent',
-      reasonType: reasonType || 'illness',
-      date: new Date().toISOString().split('T')[0],
-      reason: ''
-    });
+  const handleSubmit = async () => {
+    if (!studentId) {
+      setError('학생 정보가 올바르지 않습니다.');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      // Get current year
+      const currentYear = new Date().getFullYear();
+      
+      // Get teacher name from localStorage (assuming it's stored there)
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const homeTeacher = user.name || '담당 교사';
+      
+      // Prepare data for API
+      const attendanceData = {
+        grade: grade,
+        year: currentYear,
+        attendanceType: formData.attendanceType,
+        reasonType: formData.reasonType,
+        date: formData.date,
+        reason: formData.reason,
+        homeTeacher: homeTeacher
+      };
+      
+      // Call API
+      await addAttendanceRecord(studentId, attendanceData);
+      
+      // Call the original onSave function to update UI
+      onSave({
+        ...formData,
+        attendanceType: formData.attendanceType || attendanceType,
+        reasonType: formData.reasonType || reasonType
+      });
+      
+      // Reset form
+      setIsEditing(false);
+      setFormData({
+        attendanceType: attendanceType || 'absent',
+        reasonType: reasonType || 'illness',
+        date: new Date().toISOString().split('T')[0],
+        reason: ''
+      });
+    } catch (err) {
+      setError(err.message || '출결 내역 추가 중 오류가 발생했습니다.');
+      console.error('Error adding attendance record:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const hasDetails = details && details.length > 0;
@@ -339,15 +395,24 @@ const AttendanceModal = ({
                   />
                 </FormGroup>
                 
+                {error && (
+                  <div style={{ color: 'red', marginBottom: '16px', fontSize: '14px' }}>
+                    {error}
+                  </div>
+                )}
+                
                 <ButtonGroup>
-                  <CancelButton onClick={() => setIsEditing(false)}>
+                  <CancelButton 
+                    onClick={() => setIsEditing(false)}
+                    disabled={isSubmitting}
+                  >
                     취소
                   </CancelButton>
                   <SaveButton 
                     onClick={handleSubmit}
-                    disabled={!formData.date || !formData.reason}
+                    disabled={isSubmitting || !formData.date || !formData.reason}
                   >
-                    저장
+                    {isSubmitting ? '저장 중...' : '저장'}
                   </SaveButton>
                 </ButtonGroup>
               </EditForm>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import dummyAttendanceData from '../../../data/dummyAttendanceData';
+import { getAttendanceRecords } from '../../../api/attendanceApi';
 import AttendanceModal from '../AttendanceModal';
 
 const TabContainer = styled.div`
@@ -99,22 +99,48 @@ const TabTitle = styled.h3`
 
 const AttendanceTab = ({ student, currentUser }) => {
   const [attendanceData, setAttendanceData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [filterYear, setFilterYear] = useState('');
+  const [filterGrade, setFilterGrade] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalData, setModalData] = useState({
     attendanceType: '',
     reasonType: '',
     details: [],
     grade: '',
-    canEdit: false
+    canEdit: false,
+    studentId: ''
   });
   
   // Load attendance data
-  useEffect(() => {
-    if (student && student.id) {
-      const data = dummyAttendanceData[student.id] || [];
-      setAttendanceData(data);
+  const fetchAttendanceData = async () => {
+    if (!student || !student.id) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Prepare query parameters
+      const params = {};
+      if (filterGrade) params.grade = filterGrade;
+      if (filterYear) params.year = filterYear;
+      
+      // Call API
+      const data = await getAttendanceRecords(student.id, params);
+      setAttendanceData(data.attendance || []);
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Error fetching attendance data:', err);
+      setError('출결 데이터를 불러오는데 실패했습니다.');
+      setIsLoading(false);
     }
-  }, [student]);
+  };
+  
+  // Initial data load
+  useEffect(() => {
+    fetchAttendanceData();
+  }, [student, filterYear, filterGrade]);
   
   if (!student) return null;
   
@@ -144,52 +170,12 @@ const AttendanceTab = ({ student, currentUser }) => {
   };
   
   // Handle save new attendance record
-  const handleSaveAttendance = (formData) => {
-    const { attendanceType, reasonType, date, reason } = formData;
+  const handleSaveAttendance = async (formData) => {
+    // After successful save in the modal, refresh attendance data
+    await fetchAttendanceData();
     
-    // Find the grade data to update
-    const updatedAttendanceData = attendanceData.map(gradeData => {
-      if (gradeData.grade.toString() === modalData.grade.toString()) {
-        // Create a deep copy of the grade data
-        const updatedGradeData = JSON.parse(JSON.stringify(gradeData));
-        
-        // Initialize details object structure if it doesn't exist
-        if (!updatedGradeData.details) updatedGradeData.details = {};
-        if (!updatedGradeData.details[attendanceType]) updatedGradeData.details[attendanceType] = {};
-        if (!updatedGradeData.details[attendanceType][reasonType]) {
-          updatedGradeData.details[attendanceType][reasonType] = [];
-        }
-        
-        // Add new attendance record
-        updatedGradeData.details[attendanceType][reasonType].push({
-          date,
-          reason
-        });
-        
-        // Update attendance count
-        if (!updatedGradeData.attendance[attendanceType]) {
-          updatedGradeData.attendance[attendanceType] = { illness: 0, unauthorized: 0, etc: 0 };
-        }
-        updatedGradeData.attendance[attendanceType][reasonType] += 1;
-        
-        return updatedGradeData;
-      }
-      return gradeData;
-    });
-    
-    setAttendanceData(updatedAttendanceData);
-    
-    // Update modal data to show the new record
-    const updatedGradeData = updatedAttendanceData.find(
-      g => g.grade.toString() === modalData.grade.toString()
-    );
-    
-    if (updatedGradeData) {
-      setModalData({
-        ...modalData,
-        details: updatedGradeData.details[attendanceType][reasonType] || []
-      });
-    }
+    // Close the modal
+    setModalOpen(false);
   };
   
   // Render attendance number with conditional styling
@@ -212,8 +198,22 @@ const AttendanceTab = ({ student, currentUser }) => {
     );
   };
   
+  // Loading state component
+  const LoadingMessage = () => (
+    <NoDataContainer>
+      <NoDataText>출결 데이터를 불러오는 중입니다...</NoDataText>
+    </NoDataContainer>
+  );
+  
+  // Error state component
+  const ErrorMessage = () => (
+    <NoDataContainer>
+      <NoDataText>{error}</NoDataText>
+    </NoDataContainer>
+  );
+  
   // If no attendance data is available
-  if (attendanceData.length === 0) {
+  if (!isLoading && !error && attendanceData.length === 0) {
     return (
       <TabContainer>
         <TabTitle>{student.name} 학생의 출결 현황</TabTitle>
@@ -230,7 +230,13 @@ const AttendanceTab = ({ student, currentUser }) => {
     <TabContainer>
       <TabTitle>{student.name} 학생의 출결 현황</TabTitle>
       
-      <TableContainer>
+      {isLoading ? (
+        <LoadingMessage />
+      ) : error ? (
+        <ErrorMessage />
+      ) : (
+        <>
+        <TableContainer>
         <StyledTable>
           <thead>
             <tr>
@@ -341,8 +347,11 @@ const AttendanceTab = ({ student, currentUser }) => {
         canEdit={modalData.canEdit}
         studentName={student.name}
         grade={modalData.grade}
+        studentId={student.id}
         onSave={handleSaveAttendance}
       />
+        </>
+      )}
     </TabContainer>
   );
 };

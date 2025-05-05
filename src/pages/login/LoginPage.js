@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import useUserStore from "../../stores/useUserStore";
-import { dummyUsers } from "../../contexts/UserContext"; // Still using dummy users from context for now
+import { loginUser } from "../../api/userApi"; // Import login API
 import logoImage from "../../assets/logo/soseol_logo.png";
 
 // 페이지 레이아웃 스타일
@@ -178,27 +178,28 @@ const ForgotPasswordLink = styled.a`
   }
 `;
 
-// Mock login function to simulate API call
-const mockLogin = (userType, id, password) => {
-  return new Promise((resolve, reject) => {
-    // Simulate API delay
-    setTimeout(() => {
-      // For testing error cases
-      if (id === 'error') {
-        reject({ message: '존재하지 않는 아이디입니다.' });
-      } else if (password === 'error') {
-        reject({ message: '비밀번호가 일치하지 않습니다.' });
-      } else {
-        // Use dummy user data based on userType
-        const userData = dummyUsers[userType];
-        if (userData) {
-          resolve({ success: true, userData });
-        } else {
-          reject({ message: '사용자 정보를 찾을 수 없습니다.' });
-        }
-      }
-    }, 1000);
-  });
+// API login function
+const apiLogin = async (id, password) => {
+  try {
+    // Prepare login credentials
+    const credentials = {
+      id,
+      password
+    };
+    
+    // Call login API
+    const response = await loginUser(credentials);
+    
+    // Extract user data and tokens from response
+    return {
+      success: true,
+      userData: response.user,
+      token: response.token,
+      refreshToken: response.refresh
+    };
+  } catch (error) {
+    throw error;
+  }
 };
 
 function LoginPage() {
@@ -264,16 +265,18 @@ function LoginPage() {
     if (!validateForm()) return;
     
     // Log login attempt
-    console.log('로그인 시도됨', { userType, id, password });
+    console.log('로그인 시도됨', { id, password });
     
     setIsLoading(true);
     
     try {
-      // Call mock login function (would be replaced with actual API call)
-      const response = await mockLogin(userType, id, password);
+      // Call API login function
+      const response = await apiLogin(id, password);
       
       // Handle successful login
       console.log('로그인 성공:', response);
+      
+      // Store token in localStorage (already done in loginUser API function)
       
       // Use the login function from Zustand store
       login(response.userData);

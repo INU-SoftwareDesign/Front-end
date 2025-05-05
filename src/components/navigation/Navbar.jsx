@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaBell, FaUser, FaCaretDown, FaSignOutAlt, FaCog, FaUserCircle } from 'react-icons/fa';
 import useUserStore from '../../stores/useUserStore';
+import { logoutUser } from '../../api/userApi';
 import logoImage from '../../assets/logo/soseol_logo.png';
 
 const NavContainer = styled.nav`
@@ -417,15 +418,32 @@ const Navbar = ({ userName, profileName, profileDetail, userRole }) => {
   }, []);
   
   // Handle logout confirmation
-  const handleLogout = () => {
+  const handleLogout = async () => {
     // Close the modal
     setIsLogoutModalOpen(false);
     
-    // Call logout from the store
-    logout();
-    
-    // Redirect to login page
-    navigate('/login');
+    try {
+      // Show loading state if needed
+      // setIsLoading(true);
+      
+      // Call logout API
+      await logoutUser();
+      
+      // Call logout from the store
+      logout();
+      
+      // Redirect to login page
+      navigate('/login');
+    } catch (error) {
+      console.error('로그아웃 실패:', error);
+      alert('로그아웃 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+      
+      // Still call logout from store to clear local state
+      logout();
+      
+      // Redirect to login page anyway
+      navigate('/login');
+    }
   };
 
   // Dummy notification data

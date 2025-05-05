@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, Link } from "react-router-dom";
 import { FaCheck, FaTimes, FaInfoCircle } from "react-icons/fa";
+import { registerUser, checkUserIdAvailability } from "../../api/userApi";
 import logoImage from "../../assets/logo/soseol_logo.png";
 
 // 페이지 레이아웃 스타일
@@ -392,7 +393,7 @@ function RegisterPage() {
   };
   
   // Handle ID duplication check
-  const handleIdCheck = () => {
+  const handleIdCheck = async () => {
     // Reset ID validation states
     setIsIdChecked(false);
     setIsIdAvailable(false);
@@ -408,18 +409,20 @@ function RegisterPage() {
       return;
     }
     
-    // Simulate API call for ID check
+    // Call API for ID check
     setIsIdCheckLoading(true);
     
-    setTimeout(() => {
-      // For demo purposes, consider IDs with 'admin' as unavailable
-      const isAvailable = !id.toLowerCase().includes('admin');
+    try {
+      const isAvailable = await checkUserIdAvailability(id);
       
       setIsIdChecked(true);
       setIsIdAvailable(isAvailable);
       setIdError(isAvailable ? '' : '이미 사용 중인 아이디입니다.');
+    } catch (error) {
+      setIdError('아이디 중복 확인에 실패했습니다. 다시 시도해주세요.');
+    } finally {
       setIsIdCheckLoading(false);
-    }, 800);
+    }
   };
   
   // Handle subject selection
@@ -593,21 +596,24 @@ function RegisterPage() {
     
     // Prepare form data based on user type
     let formData = {
-      userType,
+      role: userType,
       name,
       id,
-      password
+      password,
+      // Add common fields that are required in the API spec
+      phone: '010-0000-0000', // This would be added to the form in a real implementation
+      birth_date: '2000-01-01', // This would be added to the form in a real implementation
+      address: '서울특별시' // This would be added to the form in a real implementation
     };
     
     // Add role-specific data
     if (userType === 'teacher') {
       formData = {
         ...formData,
-        teacherId,
-        isHomeroom,
-        gradeLevel: isHomeroom ? gradeLevel : null,
-        classNumber: isHomeroom ? classNumber : null,
-        subjects
+        teacherCode: teacherId,
+        grade: isHomeroom ? gradeLevel : '',
+        class: isHomeroom ? classNumber : '',
+        subjects: subjects
       };
     } else if (userType === 'student') {
       const fullStudentId = `2025${studentGrade}${studentClass}${studentNumber.padStart(2, '0')}`;
@@ -630,17 +636,20 @@ function RegisterPage() {
     console.log('회원가입 시도됨', formData);
     
     setIsLoading(true);
+    setRegisterError('');
     
     try {
-      // Simulate API call
-      setTimeout(() => {
-        console.log('회원가입 성공');
-        navigate('/login');
-      }, 1500);
+      // Call API to register user
+      const response = await registerUser(formData);
+      console.log('회원가입 성공:', response);
+      
+      // Show success message and redirect to login page
+      alert('회원가입이 성공적으로 완료되었습니다.');
+      navigate('/login');
     } catch (error) {
       // Handle register error
       console.error('회원가입 실패:', error);
-      setRegisterError('회원가입에 실패했습니다. 다시 시도해주세요.');
+      setRegisterError(error.message || '회원가입에 실패했습니다. 다시 시도해주세요.');
       setIsLoading(false);
     }
   };

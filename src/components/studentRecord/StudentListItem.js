@@ -76,7 +76,7 @@ const StudentListItem = ({ student, index, canAccess: propCanAccess }) => {
     
     if (currentUser.role === 'teacher') {
       // Teachers can only access students in their homeroom class
-      return currentUser.gradeLevel === student.grade && currentUser.classNumber === student.class;
+      return currentUser.gradeLevel === student.grade && currentUser.classNumber === student.classNumber;
     }
     
     if (currentUser.role === 'student') {
@@ -106,7 +106,7 @@ const StudentListItem = ({ student, index, canAccess: propCanAccess }) => {
     if (!currentUser) return '로그인이 필요합니다.';
     
     if (currentUser.role === 'teacher') {
-      return `${student.grade}학년 ${student.class}반의 담임 교사만 학생 상세 정보에 접근할 수 있습니다.`;
+      return `${student.grade}학년 ${student.classNumber}반의 담임 교사만 학생 상세 정보에 접근할 수 있습니다.`;
     } else if (currentUser.role === 'student') {
       return '본인의 정보만 접근할 수 있습니다.';
     } else if (currentUser.role === 'parent') {
@@ -128,7 +128,7 @@ const StudentListItem = ({ student, index, canAccess: propCanAccess }) => {
           </NameInfo>
         </NameContainer>
         <InfoText>{student.grade}</InfoText>
-        <InfoText>{student.class}</InfoText>
+        <InfoText>{student.classNumber}</InfoText>
         <InfoText>{student.number}</InfoText>
         <InfoText>{student.lastCounselingDate || student.recentCounselingDate}</InfoText>
       </ListItemContainer>

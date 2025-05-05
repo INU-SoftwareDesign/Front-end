@@ -101,7 +101,7 @@ const NoDataMessage = styled.div`
   border-radius: 4px;
 `;
 
-const ScoreTable = ({ subjects, totals, finalSummary, title }) => {
+const ScoreTable = ({ subjects, totals, finalSummary, title, grade, semester }) => {
   if (!subjects || subjects.length === 0) {
     return (
       <TableContainer>
@@ -130,7 +130,7 @@ const ScoreTable = ({ subjects, totals, finalSummary, title }) => {
   return (
     <TableContainer>
       <TableTitle>
-        {title || `${grade} ${semester} 성적표`}
+        {title || (grade && semester ? `${grade} ${semester} 성적표` : '성적표')}
       </TableTitle>
       <StyledTable>
         <thead>

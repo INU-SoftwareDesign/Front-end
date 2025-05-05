@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import AccessDeniedModal from '../common/AccessDeniedModal';
+import { useUser } from '../../contexts/UserContext';
 
 const ListItemContainer = styled.div`
   display: grid;
@@ -60,12 +61,39 @@ const InfoText = styled.div`
   text-align: center;
 `;
 
-const StudentListItem = ({ student, index, currentUser, canAccess }) => {
+const StudentListItem = ({ student, index, canAccess: propCanAccess }) => {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
+  
+  // Get user from UserContext
+  const { currentUser } = useUser();
+  
+  // Determine if the user can access this student's details
+  const canAccess = () => {
+    if (!currentUser) return false;
+    
+    if (currentUser.role === 'admin') return true;
+    
+    if (currentUser.role === 'teacher') {
+      // Teachers can only access students in their homeroom class
+      return currentUser.gradeLevel === student.grade && currentUser.classNumber === student.class;
+    }
+    
+    if (currentUser.role === 'student') {
+      // Students can only access their own information
+      return currentUser.id === student.id;
+    }
+    
+    if (currentUser.role === 'parent') {
+      // Parents can only access their children's information
+      return currentUser.childrenIds && currentUser.childrenIds.includes(student.id);
+    }
+    
+    return false;
+  };
 
   const handleClick = () => {
-    if (canAccess) {
+    if (canAccess() || propCanAccess) {
       navigate(`/student/${student.id}`);
     } else {
       // Show access denied modal
@@ -90,7 +118,7 @@ const StudentListItem = ({ student, index, currentUser, canAccess }) => {
 
   return (
     <>
-      <ListItemContainer onClick={handleClick} disabled={!canAccess}>
+      <ListItemContainer onClick={handleClick} disabled={!(canAccess() || propCanAccess)}>
         <SerialNumber>{index + 1}.</SerialNumber>
         <NameContainer>
           <ProfileImage src={student.profileImage} />

@@ -6,7 +6,7 @@ const useStudentStore = create((set, get) => ({
   // Filter state
   search: "",
   selectedGrade: "1", // Changed to match API format
-  selectedClass: "1", // Changed to match API format
+  selectedClassNumber: "1", // Changed to match API format
   
   // Data state
   students: [],
@@ -16,11 +16,11 @@ const useStudentStore = create((set, get) => ({
   // Filter actions
   setSearch: (value) => set({ search: value }),
   setGrade: (grade) => set({ selectedGrade: grade }),
-  setClass: (cls) => set({ selectedClass: cls }),
+  setClass: (cls) => set({ selectedClassNumber: cls }),
   
   // Data actions
   fetchStudents: async () => {
-    const { search, selectedGrade, selectedClass } = get();
+    const { search, selectedGrade, selectedClassNumber } = get();
     
     set({ isLoading: true, error: null });
     
@@ -28,7 +28,7 @@ const useStudentStore = create((set, get) => ({
       // Prepare query parameters
       const params = {
         grade: selectedGrade,
-        class: selectedClass
+        classNumber: selectedClassNumber
       };
       
       // Add search parameter if it exists
@@ -48,7 +48,7 @@ const useStudentStore = create((set, get) => ({
   },
   
   // Reset filters
-  resetFilters: () => set({ search: "", selectedGrade: "1", selectedClass: "1" }),
+  resetFilters: () => set({ search: "", selectedGrade: "1", selectedClassNumber: "1" }),
 }));
 
 export default useStudentStore;

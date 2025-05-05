@@ -27,7 +27,7 @@ export const getStudentGradeOverview = async (studentId, grade, semester) => {
       studentId: "20250001",
       studentName: "홍길동1",
       grade: grade || "1",
-      class: "7",
+      classNumber: "7",
       number: "1",
       subjects: [
         {
@@ -131,7 +131,7 @@ export const getStudentGradeOverview = async (studentId, grade, semester) => {
 export const getGradeManagementStatus = async (grade, classNum, semester) => {
   try {
     const response = await apiClient.get('/grades/mangement-status', {
-      params: { grade, class: classNum, semester }
+      params: { grade, classNumber: classNum, semester }
     });
     return response.data;
   } catch (error) {
@@ -149,7 +149,7 @@ export const getGradeManagementStatus = async (grade, classNum, semester) => {
           name: "홍길동1",
           studentId: "20250001",
           grade: "1",
-          class: "7",
+          classNumber: "7",
           number: "1",
           profileImage: "https://cdn-icons-png.flaticon.com/512/8847/8847419.png",
           gradeStatus: "미입력"
@@ -159,7 +159,7 @@ export const getGradeManagementStatus = async (grade, classNum, semester) => {
           name: "홍길동2",
           studentId: "20250002",
           grade: "1",
-          class: "7",
+          classNumber: "7",
           number: "2",
           profileImage: "https://cdn-icons-png.flaticon.com/512/8847/8847419.png",
           gradeStatus: "입력완료"
@@ -169,7 +169,7 @@ export const getGradeManagementStatus = async (grade, classNum, semester) => {
           name: "홍길동3",
           studentId: "20250003",
           grade: "1",
-          class: "7",
+          classNumber: "7",
           number: "3",
           profileImage: "https://cdn-icons-png.flaticon.com/512/8847/8847419.png",
           gradeStatus: "임시저장"

@@ -10,7 +10,7 @@ import dummyPersonalInfoData from '../data/dummyPersonalInfoData';
  * Get students list with optional filtering
  * @param {Object} params - Query parameters for filtering
  * @param {string} params.grade - Filter by grade
- * @param {string} params.class - Filter by class
+ * @param {string} params.classNumber - Filter by class number
  * @param {string} params.search - Search by student name
  * @returns {Promise} - Promise with students list
  */
@@ -28,8 +28,8 @@ export const getStudents = async (params = {}) => {
       filteredData = filteredData.filter(student => student.grade === params.grade);
     }
     
-    if (params.class) {
-      filteredData = filteredData.filter(student => student.class === params.class);
+    if (params.classNumber) {
+      filteredData = filteredData.filter(student => student.classNumber === params.classNumber);
     }
     
     if (params.search) {
@@ -71,7 +71,7 @@ export const getStudentById = async (studentId) => {
       name: student.name,
       studentId: student.studentId,
       grade: student.grade,
-      class: student.class,
+      classNumber: student.classNumber,
       number: student.number,
       birthDate: personalInfo.birthdate,
       address: personalInfo.address,
@@ -79,7 +79,7 @@ export const getStudentById = async (studentId) => {
       motherName: personalInfo.mother,
       history: personalInfo.classHistory.map(h => ({
         grade: h.year,
-        class: h.class,
+        classNumber: h.classNumber,
         number: h.number,
         homeroomTeacher: h.teacher
       })),

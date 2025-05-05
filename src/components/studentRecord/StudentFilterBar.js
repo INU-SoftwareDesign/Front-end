@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import useStudentStore from "../../store/useStudentStore";
 import { classOptions, grades } from "../../data/dummyStudentBarData";
+import { useUser } from "../../contexts/UserContext";
 
 const StudentFilterBar = ({
   userRole,
@@ -9,10 +10,14 @@ const StudentFilterBar = ({
   userClass,
   onFilterChange,
 }) => {
+  // Get user from UserContext
+  const { currentUser } = useUser();
+  const currentUserRole = currentUser?.role || 'teacher';
+  
   const {
     search,
     selectedGrade,
-    selectedClass,
+    selectedClassNumber,
     setSearch,
     setGrade,
     setClass,
@@ -29,10 +34,11 @@ const StudentFilterBar = ({
     setAvailableClasses(classes);
   }, [selectedGrade]);
   
+  // Check if current user is a teacher and has access to the selected class
   const isEditable =
-    userRole === "teacher" &&
-    userGrade === selectedGrade &&
-    userClass === selectedClass;
+    currentUserRole === "teacher" &&
+    currentUser?.gradeLevel === selectedGrade &&
+    currentUser?.classNumber === selectedClassNumber;
 
   useEffect(() => {
     // Only call onFilterChange if it exists (defensive programming)
@@ -40,10 +46,10 @@ const StudentFilterBar = ({
       onFilterChange({
         search,
         grade: selectedGrade,
-        className: selectedClass,
+        className: selectedClassNumber,
       });
     }
-  }, [search, selectedGrade, selectedClass, onFilterChange]);
+  }, [search, selectedGrade, selectedClassNumber, onFilterChange]);
 
   return (
     <FilterBarContainer>
@@ -76,7 +82,7 @@ const StudentFilterBar = ({
           )}
         </Dropdown>
         <Dropdown
-          value={selectedClass}
+          value={selectedClassNumber}
           onChange={(e) => setClass(e.target.value)}
         >
           {availableClasses && availableClasses.length > 0 ? (

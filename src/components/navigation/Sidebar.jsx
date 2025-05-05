@@ -1,7 +1,8 @@
 import React from 'react';
 import styled from 'styled-components';
 import { Link, useLocation } from 'react-router-dom';
-import { FaHome, FaUserGraduate, FaChartBar, FaComments, FaClipboardList, FaCog } from 'react-icons/fa';
+import { FaHome, FaUserGraduate, FaChartBar, FaComments, FaClipboardList, FaCog, FaCalendarAlt, FaUsers } from 'react-icons/fa';
+import useUserStore from '../../stores/useUserStore';
 
 const SidebarContainer = styled.div`
   position: fixed;
@@ -9,17 +10,22 @@ const SidebarContainer = styled.div`
   top: 60px;
   height: calc(100vh - 60px);
   width: 240px;
-  background-color: #4557F1;
+  background-color: #1D4EB0;
   z-index: 900;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  font-family: 'Pretendard-Regular', sans-serif;
 `;
 
 const MenuList = styled.ul`
   list-style: none;
   padding: 1rem 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 `;
 
 const MenuItem = styled.li`
@@ -29,21 +35,24 @@ const MenuItem = styled.li`
 const MenuLink = styled(Link)`
   display: flex;
   align-items: center;
-  padding: 1rem 1.5rem;
-  color: ${props => props.active ? '#4557F1' : 'white'};
+  padding: 0.875rem 1.5rem;
+  color: ${props => props.active ? '#1D4EB0' : 'white'};
   text-decoration: none;
-  transition: all 0.2s;
-  opacity: ${props => props.active ? 1 : 0.8};
+  transition: all 0.2s ease;
+  opacity: ${props => props.active ? 1 : 0.85};
   background-color: ${props => props.active ? '#ffffff' : 'transparent'};
-  font-weight: ${props => props.active ? '500' : 'normal'};
+  font-weight: ${props => props.active ? '600' : 'normal'};
+  border-radius: ${props => props.active ? '0 24px 24px 0' : '0'};
+  margin-right: ${props => props.active ? '1rem' : '0'};
+  font-family: ${props => props.active ? "'Pretendard-SemiBold'" : "'Pretendard-Medium'"}, sans-serif;
 
   &:hover {
-    background-color: ${props => props.active ? '#ffffff' : 'rgba(255, 255, 255, 0.1)'};
+    background-color: ${props => props.active ? '#ffffff' : 'rgba(255, 255, 255, 0.15)'};
     opacity: 1;
   }
 
   svg {
-    color: ${props => props.active ? '#4557F1' : 'white'};
+    color: ${props => props.active ? '#1D4EB0' : 'white'};
   }
 `;
 
@@ -54,6 +63,11 @@ const IconWrapper = styled.span`
   justify-content: center;
   width: 24px;
   font-size: 1.2rem;
+  transition: transform 0.2s ease;
+  
+  ${MenuLink}:hover & {
+    transform: translateX(2px);
+  }
 `;
 
 const SettingsButton = styled.button`
@@ -68,28 +82,70 @@ const SettingsButton = styled.button`
   width: 100%;
   text-align: left;
   font-size: 1rem;
+  font-family: 'Pretendard-Medium', sans-serif;
+  transition: all 0.2s ease;
 
   &:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.15);
     opacity: 1;
+  }
+  
+  svg {
+    margin-right: 1rem;
   }
 `;
 
+const SidebarFooter = styled.div`
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: auto;
+`;
+
+
+
 const Sidebar = () => {
   const location = useLocation();
+  const currentUser = useUserStore(state => state.currentUser);
+  
+  // Format role for display
+  const formatRole = (role) => {
+    if (!role) return '';
+    
+    switch(role) {
+      case 'teacher': return '교사';
+      case 'student': return '학생';
+      case 'parent': return '학부모';
+      default: return role;
+    }
+  };
 
-  const menuItems = [
+  // Define base menu items
+  const baseMenuItems = [
     { path: '/', icon: <FaHome />, label: '메인 페이지' },
     { path: '/students', icon: <FaUserGraduate />, label: '학생부' },
-    { path: '/grades', icon: <FaChartBar />, label: '성적' },
-    { path: '/counseling', icon: <FaComments />, label: '상담' },
+    { path: '/grades', icon: <FaChartBar />, label: '성적 관리', roleRequired: 'teacher' },
     { path: '/feedback', icon: <FaClipboardList />, label: '피드백' },
   ];
+  
+  // Add role-specific counseling menu item
+  const counselingMenuItem = currentUser && currentUser.role === 'teacher'
+    ? { path: '/counseling', icon: <FaComments />, label: '상담' }
+    : { path: '/student-counseling', icon: <FaComments />, label: '상담' };
+  
+  // Combine all menu items
+  const menuItems = [...baseMenuItems.slice(0, 3), counselingMenuItem, ...baseMenuItems.slice(3)];
+
+  // Filter menu items based on user role
+  const filteredMenuItems = currentUser ? menuItems.filter(item => {
+    // Check if the item has a roleRequired property and if the user has that role
+    if (item.roleRequired && currentUser.role !== item.roleRequired) return false;
+    return true;
+  }) : menuItems.filter(item => !item.roleRequired);
 
   return (
     <SidebarContainer>
       <MenuList>
-        {menuItems.map((item) => (
+        {filteredMenuItems.map((item) => (
           <MenuItem key={item.path}>
             <MenuLink to={item.path} active={location.pathname === item.path ? 1 : 0}>
               <IconWrapper>
@@ -100,12 +156,12 @@ const Sidebar = () => {
           </MenuItem>
         ))}
       </MenuList>
-      <SettingsButton>
-        <IconWrapper>
+      <SidebarFooter>
+        <SettingsButton>
           <FaCog />
-        </IconWrapper>
-        설정
-      </SettingsButton>
+          설정
+        </SettingsButton>
+      </SidebarFooter>
     </SidebarContainer>
   );
 };

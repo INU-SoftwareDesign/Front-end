@@ -1,7 +1,8 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import useStudentStore from "../../store/useStudentStore";
 import { classOptions, grades } from "../../data/dummyStudentBarData";
+import useUserStore from "../../stores/useUserStore";
 
 const StudentFilterBar = ({
   userRole,
@@ -9,27 +10,46 @@ const StudentFilterBar = ({
   userClass,
   onFilterChange,
 }) => {
+  // Get user from Zustand store
+  const currentUser = useUserStore(state => state.currentUser);
+  const currentUserRole = currentUser?.role || 'teacher';
+  
   const {
     search,
     selectedGrade,
-    selectedClass,
+    selectedClassNumber,
     setSearch,
     setGrade,
     setClass,
   } = useStudentStore();
 
+  // Ensure we have valid data for dropdown options
+  const [availableGrades, setAvailableGrades] = useState(grades || []);
+  const [availableClasses, setAvailableClasses] = useState([]);
+  
+  // Update available classes when grade changes
+  useEffect(() => {
+    // Safely get classes for the selected grade with fallback to empty array
+    const classes = classOptions && classOptions[selectedGrade] ? classOptions[selectedGrade] : [];
+    setAvailableClasses(classes);
+  }, [selectedGrade]);
+  
+  // Check if current user is a teacher and has access to the selected class
   const isEditable =
-    userRole === "teacher" &&
-    userGrade === selectedGrade &&
-    userClass === selectedClass;
+    currentUserRole === "teacher" &&
+    currentUser?.gradeLevel === selectedGrade &&
+    currentUser?.classNumber === selectedClassNumber;
 
   useEffect(() => {
-    onFilterChange({
-      search,
-      grade: selectedGrade,
-      className: selectedClass,
-    });
-  }, [search, selectedGrade, selectedClass]);
+    // Only call onFilterChange if it exists (defensive programming)
+    if (typeof onFilterChange === 'function') {
+      onFilterChange({
+        search,
+        grade: selectedGrade,
+        className: selectedClassNumber,
+      });
+    }
+  }, [search, selectedGrade, selectedClassNumber, onFilterChange]);
 
   return (
     <FilterBarContainer>
@@ -44,24 +64,36 @@ const StudentFilterBar = ({
           value={selectedGrade}
           onChange={(e) => {
             setGrade(e.target.value);
-            setClass(classOptions[e.target.value][0]);
+            // Safely get the first class for the selected grade
+            const firstClass = classOptions && classOptions[e.target.value] && 
+              classOptions[e.target.value].length > 0 ? 
+              classOptions[e.target.value][0] : "1";
+            setClass(firstClass);
           }}
         >
-          {grades.map((grade) => (
-            <option key={grade} value={grade}>
-              {grade}
-            </option>
-          ))}
+          {availableGrades && availableGrades.length > 0 ? (
+            availableGrades.map((grade) => (
+              <option key={grade} value={grade}>
+                {grade}학년
+              </option>
+            ))
+          ) : (
+            <option value="1">1학년</option>
+          )}
         </Dropdown>
         <Dropdown
-          value={selectedClass}
+          value={selectedClassNumber}
           onChange={(e) => setClass(e.target.value)}
         >
-          {classOptions[selectedGrade].map((cls) => (
-            <option key={cls} value={cls}>
-              {cls}
-            </option>
-          ))}
+          {availableClasses && availableClasses.length > 0 ? (
+            availableClasses.map((cls) => (
+              <option key={cls} value={cls}>
+                {cls}반
+              </option>
+            ))
+          ) : (
+            <option value="1">1반</option>
+          )}
         </Dropdown>
       </LeftSection>
       {isEditable && <EditButton>수정하기</EditButton>}

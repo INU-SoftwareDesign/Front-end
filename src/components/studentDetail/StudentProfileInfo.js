@@ -49,7 +49,7 @@ const StudentProfileInfo = ({ student }) => {
       <InfoContainer>
         <Name>{student.name}</Name>
         <StudentId>{student.studentId}</StudentId>
-        <ClassInfo>{student.grade}학년 {student.class}반 {student.number}번</ClassInfo>
+        <ClassInfo>{student.grade}학년 {student.classNumber}반 {student.number}번</ClassInfo>
       </InfoContainer>
     </ProfileContainer>
   );

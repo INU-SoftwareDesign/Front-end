@@ -101,8 +101,8 @@ const NoDataMessage = styled.div`
   border-radius: 4px;
 `;
 
-const ScoreTable = ({ scoreData, title }) => {
-  if (!scoreData || !scoreData.scores || scoreData.scores.length === 0) {
+const ScoreTable = ({ subjects, totals, finalSummary, title, grade, semester }) => {
+  if (!subjects || subjects.length === 0) {
     return (
       <TableContainer>
         <TableTitle>{title || '성적표'}</TableTitle>
@@ -111,23 +111,26 @@ const ScoreTable = ({ scoreData, title }) => {
     );
   }
 
-  const { grade, semester, scores } = scoreData;
+  // Use the provided summary data from API
+  const { totalCredits, sumMidterm, sumFinal, sumPerformance, sumTotalScore } = totals || {
+    totalCredits: 0,
+    sumMidterm: 0,
+    sumFinal: 0,
+    sumPerformance: 0,
+    sumTotalScore: 0
+  };
   
-  // Calculate summary data
-  const totalUnits = scores.reduce((sum, item) => sum + item.unit, 0);
-  const totalMidterm = scores.reduce((sum, item) => sum + (item.midterm * item.unit), 0) / totalUnits;
-  const totalFinal = scores.reduce((sum, item) => sum + (item.final * item.unit), 0) / totalUnits;
-  const totalTask = scores.reduce((sum, item) => sum + (item.task * item.unit), 0) / totalUnits;
-  const totalScore = scores.reduce((sum, item) => sum + (item.total * item.unit), 0) / totalUnits;
-  
-  // Use the server-provided summary data
-  // If scoreData contains these values, use them directly
-  const { totalStudents, studentRank, finalGrade } = scoreData;
+  // Use the server-provided final summary data
+  const { totalStudents, finalRank, finalConvertedGrade } = finalSummary || {
+    totalStudents: 0,
+    finalRank: '??',
+    finalConvertedGrade: '??'
+  };
   
   return (
     <TableContainer>
       <TableTitle>
-        {title || `${grade} ${semester} 성적표`}
+        {title || (grade && semester ? `${grade} ${semester} 성적표` : '성적표')}
       </TableTitle>
       <StyledTable>
         <thead>
@@ -143,35 +146,25 @@ const ScoreTable = ({ scoreData, title }) => {
           </tr>
         </thead>
         <tbody>
-          {scores.map((score, index) => (
+          {subjects.map((subject, index) => (
             <tr key={index}>
-              <TableCell className="subject">{score.subject}</TableCell>
-              <TableCell>{score.unit}</TableCell>
-              <TableCell>{score.midterm.toFixed(1)}</TableCell>
-              <TableCell>{score.final.toFixed(1)}</TableCell>
-              <TableCell>{score.task.toFixed(1)}</TableCell>
-              <TableCell className="highlight">{score.total.toFixed(1)}</TableCell>
-              <TableCell>{score.rank}</TableCell>
-              <TableCell>{score.grade}</TableCell>
+              <TableCell className="subject">{subject.name}</TableCell>
+              <TableCell>{subject.credits}</TableCell>
+              <TableCell>{subject.midterm.toFixed(1)}</TableCell>
+              <TableCell>{subject.final.toFixed(1)}</TableCell>
+              <TableCell>{subject.performance.toFixed(1)}</TableCell>
+              <TableCell className="highlight">{subject.totalScore.toFixed(1)}</TableCell>
+              <TableCell>{subject.rank}</TableCell>
+              <TableCell>{subject.gradeLevel}</TableCell>
             </tr>
           ))}
           <SummaryRow isTotal={true}>
             <TableCell className="subject">총합</TableCell>
-            <TableCell>{totalUnits}</TableCell>
-            <TableCell>{totalMidterm.toFixed(1)}</TableCell>
-            <TableCell>{totalFinal.toFixed(1)}</TableCell>
-            <TableCell>{totalTask.toFixed(1)}</TableCell>
-            <TableCell className="highlight">{totalScore.toFixed(1)}</TableCell>
-            <TableCell>-</TableCell>
-            <TableCell>-</TableCell>
-          </SummaryRow>
-          <SummaryRow>
-            <TableCell className="subject">평균</TableCell>
-            <TableCell>-</TableCell>
-            <TableCell>{totalMidterm.toFixed(1)}</TableCell>
-            <TableCell>{totalFinal.toFixed(1)}</TableCell>
-            <TableCell>{totalTask.toFixed(1)}</TableCell>
-            <TableCell className="highlight">{totalScore.toFixed(1)}</TableCell>
+            <TableCell>{totalCredits}</TableCell>
+            <TableCell>{sumMidterm.toFixed(1)}</TableCell>
+            <TableCell>{sumFinal.toFixed(1)}</TableCell>
+            <TableCell>{sumPerformance.toFixed(1)}</TableCell>
+            <TableCell className="highlight">{sumTotalScore.toFixed(1)}</TableCell>
             <TableCell>-</TableCell>
             <TableCell>-</TableCell>
           </SummaryRow>
@@ -185,11 +178,11 @@ const ScoreTable = ({ scoreData, title }) => {
         </SummaryItem>
         <SummaryItem>
           <SummaryLabel>해당 학생의 석차</SummaryLabel>
-          <SummaryValue>{studentRank}</SummaryValue>
+          <SummaryValue>{finalRank}</SummaryValue>
         </SummaryItem>
         <SummaryItem>
           <SummaryLabel>최종 등급</SummaryLabel>
-          <SummaryValue>{finalGrade}</SummaryValue>
+          <SummaryValue>{finalConvertedGrade}</SummaryValue>
         </SummaryItem>
       </ScoreSummary>
     </TableContainer>

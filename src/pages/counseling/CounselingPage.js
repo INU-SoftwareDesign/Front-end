@@ -3,8 +3,8 @@ import styled from 'styled-components';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../../contexts/UserContext';
-import dummyTeacherCounselingData from '../../data/dummyTeacherCounselingData';
+import useUserStore from '../../stores/useUserStore';
+import counselingApi from '../../api/counselingApi';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -12,6 +12,36 @@ const PageContainer = styled.div`
   max-width: 1200px;
   margin: 0 auto;
   font-family: 'Pretendard-Regular', sans-serif;
+`;
+
+const RejectButton = styled.button`
+  background-color: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: #fa5252;
+  }
+`;
+
+const CancelButton = styled.button`
+  background-color: #868e96;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: #495057;
+  }
 `;
 
 const PageTitle = styled.h1`
@@ -149,6 +179,23 @@ const Badge = styled.span`
   border-radius: 12px;
   font-size: 0.8rem;
   font-weight: 500;
+`;
+
+const StatusBadge = styled.span`
+  background-color: ${props => {
+    switch(props.status) {
+      case 'pending': return '#FFC107';
+      case 'scheduled': return '#2196F3';
+      case 'completed': return '#4CAF50';
+      default: return '#9E9E9E';
+    }
+  }};
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-left: auto;
 `;
 
 const CounselingList = styled.ul`
@@ -350,7 +397,7 @@ const SecondaryButton = styled(Button)`
 
 const CounselingPage = () => {
   const navigate = useNavigate();
-  const { currentUser } = useUser();
+  const currentUser = useUserStore(state => state.currentUser);
   const [pendingCounselings, setPendingCounselings] = useState([]);
   const [scheduledCounselings, setScheduledCounselings] = useState([]);
   const [completedCounselings, setCompletedCounselings] = useState([]);
@@ -371,10 +418,68 @@ const CounselingPage = () => {
 
   // Load counseling data
   useEffect(() => {
-    setPendingCounselings(dummyTeacherCounselingData.pendingCounselings);
-    setScheduledCounselings(dummyTeacherCounselingData.scheduledCounselings);
-    setCompletedCounselings(dummyTeacherCounselingData.completedCounselings);
-  }, []);
+    if (currentUser && currentUser.id) {
+      // 상담 신청 내역 가져오기 (status=신청)
+      loadPendingCounselings();
+      
+      // 상담 예정 내역 가져오기 (status=예약확정)
+      loadScheduledCounselings();
+      
+      // 상담 완료 내역 가져오기 (status=완료)
+      loadCompletedCounselings();
+    }
+  }, [currentUser]);
+  
+  // 상담 신청 내역 가져오기
+  const loadPendingCounselings = async () => {
+    try {
+      const response = await counselingApi.getTeacherCounselingRequests(currentUser.id, { status: '신청' });
+      if (response.data && response.data.success) {
+        // 날짜 기준 오름차순 정렬
+        const sortedData = [...response.data.data].sort((a, b) => {
+          return new Date(a.counselingDate) - new Date(b.counselingDate);
+        });
+        setPendingCounselings(sortedData);
+      }
+    } catch (error) {
+      console.error('상담 신청 내역 로딩 실패:', error);
+      console.error('상담 신청 내역을 불러오는데 실패했습니다.');
+    }
+  };
+  
+  // 상담 예정 내역 가져오기
+  const loadScheduledCounselings = async () => {
+    try {
+      // API 호출하여 예약확정 상태의 상담 일정 가져오기
+      const response = await counselingApi.getTeacherScheduledCounselings(currentUser.id, { status: '예약확정' });
+      
+      if (response.data && response.data.success) {
+        // 날짜 기준 오름차순 정렬
+        const sortedData = [...response.data.data].sort((a, b) => {
+          return new Date(a.counselingDate) - new Date(b.counselingDate);
+        });
+        
+        console.log('상담 예정 내역 로딩 성공:', sortedData);
+        setScheduledCounselings(sortedData);
+      }
+    } catch (error) {
+      console.error('상담 예정 내역 로딩 실패:', error);
+      console.error('상담 예정 내역을 불러오는데 실패했습니다.');
+    }
+  };
+  
+  // 상담 완료 내역 가져오기
+  const loadCompletedCounselings = async () => {
+    try {
+      const response = await counselingApi.getTeacherScheduledCounselings(currentUser.id, { status: '완료' });
+      if (response.data && response.data.success) {
+        setCompletedCounselings(response.data.data);
+      }
+    } catch (error) {
+      console.error('상담 완료 내역 로딩 실패:', error);
+      console.error('상담 완료 내역을 불러오는데 실패했습니다.');
+    }
+  };
 
   // Get all counselings for calendar display
   const allCounselings = [...pendingCounselings, ...scheduledCounselings, ...completedCounselings];
@@ -407,38 +512,71 @@ const CounselingPage = () => {
   };
 
   // Function to handle approving a counseling request
-  const handleApproveCounseling = () => {
-    if (!location.trim()) return;
+  const handleApproveCounseling = async () => {
+    // 장소 입력 검증
+    if (!location.trim()) {
+      alert('상담 장소를 입력해주세요.');
+      return;
+    }
 
-    const updatedCounseling = {
-      ...selectedCounseling,
-      status: '확정',
-      location: location
-    };
+    try {
+      // 상담 예약확정 API 호출
+      const response = await counselingApi.approveCounseling(selectedCounseling.id, {
+        location: location
+      });
 
-    // Remove from pending and add to scheduled
-    setPendingCounselings(prev => prev.filter(c => c.id !== selectedCounseling.id));
-    setScheduledCounselings(prev => [...prev, updatedCounseling]);
-    
-    closeModal();
+      if (response.data && response.data.success) {
+        alert('상담 신청이 성공적으로 확정되었습니다.');
+        
+        // 상담 데이터 다시 불러오기
+        loadPendingCounselings();
+        loadScheduledCounselings();
+        
+        closeModal();
+      }
+    } catch (error) {
+      console.error('상담 예약확정 실패:', error);
+      alert('상담 예약확정 처리에 실패했습니다.');
+    }
   };
 
   // Function to handle saving counseling results
-  const handleSaveCounselingResult = () => {
-    const updatedCounseling = {
-      ...selectedCounseling,
-      status: '완료',
-      resultContent: resultContent,
-      counselingDate: counselingDate,
-      counselingTime: counselingTime,
-      location: location
-    };
+  const handleSaveCounselingResult = async () => {
+    // 장소 입력 검증
+    if (!location || !location.trim()) {
+      alert('상담 장소를 입력해주세요.');
+      return;
+    }
 
-    // Remove from scheduled and add to completed
-    setScheduledCounselings(prev => prev.filter(c => c.id !== selectedCounseling.id));
-    setCompletedCounselings(prev => [...prev, updatedCounseling]);
-    
-    closeModal();
+    try {
+      // API로 전송할 데이터 구성
+      const updateData = {
+        counselingDate: counselingDate,
+        counselingTime: counselingTime,
+        location: location,
+        status: '완료',
+        resultContent: resultContent
+      };
+
+      // API 호출
+      const response = await counselingApi.updateCounseling(selectedCounseling.id, updateData);
+
+      if (response.data && response.data.success) {
+        console.log('상담 결과 저장 성공:', response.data);
+        alert(response.data.data.message || '상담 결과가 성공적으로 저장되었습니다.');
+        
+        // 상담 데이터 다시 불러오기
+        loadScheduledCounselings();
+        loadCompletedCounselings();
+        
+        closeModal();
+      } else {
+        alert('상담 결과 저장 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('상담 결과 저장 실패:', error);
+      alert('상담 결과 저장 중 오류가 발생했습니다.');
+    }
   };
 
   // Function to get counselings for a specific date (for calendar)
@@ -473,6 +611,32 @@ const CounselingPage = () => {
     );
   };
 
+  // 상담 신청 거절 처리 함수
+  const handleRejectCounseling = async (counselingId, event) => {
+    // 이벤트 전파 방지 (클릭 이벤트가 부모 요소로 전파되지 않도록)
+    event.stopPropagation();
+    
+    if (window.confirm('상담 신청을 거절하시겠습니까?')) {
+      try {
+        // API 호출
+        const response = await counselingApi.deleteCounseling(counselingId);
+        
+        if (response.data && response.data.success) {
+          console.log('상담 신청 거절 성공:', response.data);
+          alert(response.data.data.message || '상담 신청이 거절되었습니다.');
+          
+          // 상담 데이터 다시 불러오기
+          loadPendingCounselings();
+        } else if (response.data && !response.data.success) {
+          alert(response.data.error.message || '상담 신청 거절 중 오류가 발생했습니다.');
+        }
+      } catch (error) {
+        console.error('상담 신청 거절 실패:', error);
+        alert('상담 신청 거절 중 오류가 발생했습니다.');
+      }
+    }
+  };
+
   // Render pending counseling list
   const renderPendingCounselings = () => {
     if (pendingCounselings.length === 0) {
@@ -487,17 +651,49 @@ const CounselingPage = () => {
             onClick={() => handlePendingCounselingClick(counseling)}
           >
             <CounselingHeader>
-              <StudentName>{counseling.studentName} ({counseling.grade}학년 {counseling.class}반 {counseling.number}번)</StudentName>
+              <StudentName>{counseling.studentName} ({counseling.grade}학년 {counseling.classNumber}반 {counseling.number}번)</StudentName>
               <CounselingDate>{counseling.counselingDate} {counseling.counselingTime}</CounselingDate>
             </CounselingHeader>
             <CounselingInfo>
               <CounselingType>{counseling.counselingType}</CounselingType>
               <span>{counseling.counselingCategory}</span>
+              <StatusBadge status="pending">신청</StatusBadge>
             </CounselingInfo>
+            <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+              <RejectButton onClick={(e) => handleRejectCounseling(counseling.id, e)}>
+                거절하기
+              </RejectButton>
+            </div>
           </CounselingItem>
         ))}
       </CounselingList>
     );
+  };
+
+  // 상담 예약 취소 함수
+  const handleCancelScheduledCounseling = async (counselingId, event) => {
+    // 이벤트 전파 방지
+    event.stopPropagation();
+    
+    if (window.confirm('상담 예약을 취소하시겠습니까?')) {
+      try {
+        // API 호출
+        const response = await counselingApi.deleteCounseling(counselingId);
+        
+        if (response.data && response.data.success) {
+          console.log('상담 예약 취소 성공:', response.data);
+          alert(response.data.data.message || '상담 예약이 취소되었습니다.');
+          
+          // 상담 데이터 다시 불러오기
+          loadScheduledCounselings();
+        } else if (response.data && !response.data.success) {
+          alert(response.data.error.message || '상담 예약 취소 중 오류가 발생했습니다.');
+        }
+      } catch (error) {
+        console.error('상담 예약 취소 실패:', error);
+        alert('상담 예약 취소 중 오류가 발생했습니다.');
+      }
+    }
   };
 
   // Render scheduled counseling list
@@ -514,14 +710,20 @@ const CounselingPage = () => {
             onClick={() => handleScheduledCounselingClick(counseling)}
           >
             <CounselingHeader>
-              <StudentName>{counseling.studentName} ({counseling.grade}학년 {counseling.class}반 {counseling.number}번)</StudentName>
+              <StudentName>{counseling.studentName} ({counseling.grade}학년 {counseling.classNumber}반 {counseling.number}번)</StudentName>
               <CounselingDate>{counseling.counselingDate} {counseling.counselingTime}</CounselingDate>
             </CounselingHeader>
             <CounselingInfo>
               <CounselingType>{counseling.counselingType}</CounselingType>
               <span>{counseling.counselingCategory}</span>
-              <span>장소: {counseling.location}</span>
+              <StatusBadge status="scheduled">예약확정</StatusBadge>
             </CounselingInfo>
+            <div style={{ marginTop: '8px', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>장소: {counseling.location || '미정'}</span>
+              <CancelButton onClick={(e) => handleCancelScheduledCounseling(counseling.id, e)}>
+                예약 취소
+              </CancelButton>
+            </div>
           </CounselingItem>
         ))}
       </CounselingList>
@@ -655,7 +857,7 @@ const CounselingPage = () => {
           {isPending ? (
             <PrimaryButton 
               onClick={handleApproveCounseling}
-              disabled={!location.trim()}
+              disabled={!location || !location.trim()}
             >
               신청 완료
             </PrimaryButton>
@@ -666,7 +868,7 @@ const CounselingPage = () => {
               </SecondaryButton>
               <PrimaryButton 
                 onClick={handleSaveCounselingResult}
-                disabled={!location.trim()}
+                disabled={!location || !location.trim()}
               >
                 상담 결과 저장
               </PrimaryButton>

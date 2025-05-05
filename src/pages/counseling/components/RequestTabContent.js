@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import dummyStudentCounselingData from '../../../data/dummyStudentCounselingData';
+import counselingApi from '../../../api/counselingApi';
 
 // Styled Components
 const Container = styled.div`
@@ -213,7 +213,12 @@ const NoDateSelectedMessage = styled.div`
 
 const RequestTabContent = ({ currentUser }) => {
   const [selectedDate, setSelectedDate] = useState(null);
+  const [availableTimes, setAvailableTimes] = useState([]);
   const [bookedTimes, setBookedTimes] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     studentName: '',
@@ -221,12 +226,11 @@ const RequestTabContent = ({ currentUser }) => {
     contactNumber: '',
     counselingDate: '',
     counselingTime: '',
+    counselingType: '교수상담', // 기본값 설정
+    counselingCategory: '학업', // 기본값 설정
     counselingContent: ''
   });
   const [formValid, setFormValid] = useState(false);
-  
-  // Available times from dummy data
-  const availableTimes = dummyStudentCounselingData.availableTimes;
   
   // Format date as YYYY-MM-DD for form and API
   const formatDate = (date) => {
@@ -237,20 +241,48 @@ const RequestTabContent = ({ currentUser }) => {
     return `${year}-${month}-${day}`;
   };
   
-  // Update booked times when date changes
+  // Fetch available times when date changes
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && currentUser) {
       const formattedDate = formatDate(selectedDate);
-      const bookedSlotsForDate = dummyStudentCounselingData.bookedSlots[formattedDate] || [];
-      setBookedTimes(bookedSlotsForDate);
       
       // Update form data with selected date
       setFormData(prev => ({
         ...prev,
         counselingDate: formattedDate
       }));
+      
+      // Fetch available times from API
+      fetchAvailableTimes(formattedDate);
     }
-  }, [selectedDate]);
+  }, [selectedDate, currentUser]);
+  
+  // Function to fetch available times from API
+  const fetchAvailableTimes = async (date) => {
+    if (!date || !currentUser) return;
+    
+    setIsLoading(true);
+    try {
+      // 상담 교사 ID - 실제 구현에서는 선택된 교사 ID를 사용해야 함
+      // 현재는 임시로 '1'을 사용
+      const teacherId = '1';
+      
+      const response = await counselingApi.getAvailableTimes(teacherId, date);
+      
+      if (response.data && response.data.success) {
+        const { availableTimes, bookedTimes } = response.data.data;
+        
+        setAvailableTimes(availableTimes || []);
+        setBookedTimes(bookedTimes || []);
+        
+        console.log('상담 가능 시간 조회 성공:', { availableTimes, bookedTimes });
+      }
+    } catch (error) {
+      console.error('상담 가능 시간 조회 실패:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Pre-fill form data based on user role
   useEffect(() => {
@@ -294,21 +326,63 @@ const RequestTabContent = ({ currentUser }) => {
   };
   
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formValid) return;
+    if (!formValid || isSubmitting) return;
     
-    // In a real app, this would send the data to an API
-    console.log('Submitting counseling request:', formData);
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setSubmitSuccess(false);
     
-    // Reset form
-    setFormData(prev => ({
-      ...prev,
-      counselingTime: '',
-      counselingContent: ''
-    }));
-    
-    alert('상담 신청이 완료되었습니다.');
+    try {
+      // 상담 신청 API 호출을 위한 데이터 구성
+      const requestData = {
+        studentId: currentUser.role === 'student' ? currentUser.id : currentUser.childId,
+        teacherId: '1', // 테스트용 교사 ID, 실제로는 선택한 교사 ID를 사용해야 함
+        counselingDate: formData.counselingDate,
+        counselingTime: formData.counselingTime,
+        counselingType: formData.counselingType,
+        counselingCategory: formData.counselingCategory,
+        requestContent: formData.counselingContent,
+        contactNumber: formData.contactNumber
+      };
+      
+      console.log('상담 신청 데이터:', requestData);
+      
+      // API 호출
+      const response = await counselingApi.createCounselingRequest(requestData);
+      
+      // 응답 처리
+      if (response.data.success) {
+        console.log('상담 신청 성공:', response.data.data);
+        setSubmitSuccess(true);
+        
+        // 폼 초기화
+        setFormData(prev => ({
+          ...prev,
+          counselingTime: '',
+          counselingContent: ''
+        }));
+        
+        // 선택한 날짜에 대한 가능 시간 다시 불러오기
+        if (selectedDate) {
+          fetchAvailableTimes(formatDate(selectedDate));
+        }
+        
+        alert(response.data.data.message || '상담 신청이 완료되었습니다.');
+      } else {
+        // 에러 처리
+        console.error('상담 신청 실패:', response.data.error);
+        setSubmitError(response.data.error.message || '상담 신청 중 오류가 발생했습니다.');
+        alert(response.data.error.message || '상담 신청 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('상담 신청 API 호출 오류:', error);
+      setSubmitError('서버 연결 오류가 발생했습니다. 다시 시도해주세요.');
+      alert('서버 연결 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   return (
@@ -324,17 +398,39 @@ const RequestTabContent = ({ currentUser }) => {
         {selectedDate && (
           <BookedTimesContainer>
             <BookedTimesTitle>
-              {selectedDate.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} 예약된 시간
+              {selectedDate.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} 상황
             </BookedTimesTitle>
-            <BookedTimesList>
-              {bookedTimes.length > 0 ? (
-                bookedTimes.map((time, index) => (
-                  <BookedTimeItem key={index}>{time}</BookedTimeItem>
-                ))
-              ) : (
-                <span>예약된 시간이 없습니다.</span>
-              )}
-            </BookedTimesList>
+            {isLoading ? (
+              <div>상담 가능 시간을 불러오는 중...</div>
+            ) : (
+              <>
+                <div style={{ marginBottom: '10px' }}>
+                  <h4 style={{ margin: '10px 0 5px 0', fontSize: '0.95rem' }}>예약 가능 시간</h4>
+                  <BookedTimesList>
+                    {availableTimes.length > 0 ? (
+                      availableTimes.map((time, index) => (
+                        <BookedTimeItem key={index} style={{ backgroundColor: '#e3f2fd', color: '#1976d2' }}>{time}</BookedTimeItem>
+                      ))
+                    ) : (
+                      <span>예약 가능한 시간이 없습니다.</span>
+                    )}
+                  </BookedTimesList>
+                </div>
+                
+                <div>
+                  <h4 style={{ margin: '10px 0 5px 0', fontSize: '0.95rem' }}>예약된 시간</h4>
+                  <BookedTimesList>
+                    {bookedTimes.length > 0 ? (
+                      bookedTimes.map((time, index) => (
+                        <BookedTimeItem key={index}>{time}</BookedTimeItem>
+                      ))
+                    ) : (
+                      <span>예약된 시간이 없습니다.</span>
+                    )}
+                  </BookedTimesList>
+                </div>
+              </>
+            )}
           </BookedTimesContainer>
         )}
       </CalendarSection>
@@ -402,17 +498,55 @@ const RequestTabContent = ({ currentUser }) => {
                 value={formData.counselingTime}
                 onChange={handleInputChange}
                 required
+                disabled={isLoading || availableTimes.length === 0 || isSubmitting}
               >
                 <option value="">시간 선택</option>
-                {availableTimes.map((time) => (
-                  <option 
-                    key={time} 
-                    value={time}
-                    disabled={bookedTimes.includes(time)}
-                  >
-                    {time}
-                  </option>
-                ))}
+                {isLoading ? (
+                  <option value="" disabled>상담 가능 시간을 불러오는 중...</option>
+                ) : availableTimes.length === 0 ? (
+                  <option value="" disabled>예약 가능한 시간이 없습니다</option>
+                ) : (
+                  availableTimes.map((time) => (
+                    <option 
+                      key={time} 
+                      value={time}
+                    >
+                      {time}
+                    </option>
+                  ))
+                )}
+              </Select>
+            </FormGroup>
+            
+            <FormGroup>
+              <Label>상담 유형</Label>
+              <Select
+                name="counselingType"
+                value={formData.counselingType}
+                onChange={handleInputChange}
+                required
+                disabled={isSubmitting}
+              >
+                <option value="교수상담">교수상담</option>
+                <option value="진로상담">진로상담</option>
+                <option value="학생상담">학생상담</option>
+              </Select>
+            </FormGroup>
+            
+            <FormGroup>
+              <Label>상담 카테고리</Label>
+              <Select
+                name="counselingCategory"
+                value={formData.counselingCategory}
+                onChange={handleInputChange}
+                required
+                disabled={isSubmitting}
+              >
+                <option value="학업">학업</option>
+                <option value="진로">진로</option>
+                <option value="생활">생활</option>
+                <option value="심리">심리</option>
+                <option value="기타">기타</option>
               </Select>
             </FormGroup>
             
@@ -422,10 +556,23 @@ const RequestTabContent = ({ currentUser }) => {
               onChange={handleInputChange}
               placeholder="상담 내용을 입력해주세요."
               required
+              disabled={isSubmitting}
             />
             
-            <SubmitButton type="submit" disabled={!formValid}>
-              상담 신청
+            {submitError && (
+              <div style={{ color: 'red', marginTop: '10px', marginBottom: '10px' }}>
+                {submitError}
+              </div>
+            )}
+            
+            {submitSuccess && (
+              <div style={{ color: 'green', marginTop: '10px', marginBottom: '10px' }}>
+                상담 신청이 성공적으로 완료되었습니다.
+              </div>
+            )}
+            
+            <SubmitButton type="submit" disabled={!formValid || isSubmitting}>
+              {isSubmitting ? '신청 중...' : '상담 신청'}
             </SubmitButton>
           </Form>
         </FormSection>

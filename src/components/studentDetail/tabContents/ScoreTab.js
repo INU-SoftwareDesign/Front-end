@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import dummyStudentScoreData from '../../../data/dummyStudentScoreData';
+import { getStudentGradeOverview } from '../../../api/gradeApi';
 import ScoreTable from '../ScoreTable';
 import ScoreRadarChart from '../ScoreRadarChart';
+import dummyStudentScoreData from '../../../data/dummyStudentScoreData';
 
 const TabContainer = styled.div`
   padding: 20px;
@@ -81,109 +82,131 @@ const ScoreCardContainer = styled.div`
 `;
 
 const ScoreTab = ({ student }) => {
-  const [studentScores, setStudentScores] = useState([]);
-  const [selectedGrade, setSelectedGrade] = useState('');
-  const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedGrade, setSelectedGrade] = useState('1');
+  const [selectedSemester, setSelectedSemester] = useState('1학기');
   const [selectedSubject, setSelectedSubject] = useState('all');
-  const [filteredScores, setFilteredScores] = useState([]);
-  const [availableGrades, setAvailableGrades] = useState([]);
-  const [availableSemesters, setAvailableSemesters] = useState([]);
-  const [availableSubjects, setAvailableSubjects] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [gradeData, setGradeData] = useState(null);
+  const [availableGrades, setAvailableGrades] = useState(['1', '2', '3']);
+  const [availableSemesters, setAvailableSemesters] = useState(['1학기', '2학기']);
+  const [availableSubjects, setAvailableSubjects] = useState(['all', '국어', '수학', '영어', '과학', '사회', '음악', '미술', '체육']);
 
-  // Load student score data
+  // Fetch student grade data when filters change
   useEffect(() => {
-    if (student && student.id) {
-      const scores = dummyStudentScoreData[student.id] || [];
-      setStudentScores(scores);
+    const fetchStudentGradeData = async () => {
+      if (!student || !student.id) return;
       
-      // Set available filter options
-      const grades = [...new Set(scores.map(item => item.grade))];
-      setAvailableGrades(grades);
+      setIsLoading(true);
+      setError(null);
       
-      // Set default selected grade if available
-      if (grades.length > 0 && !selectedGrade) {
-        setSelectedGrade(grades[0]);
-      }
-    }
-  }, [student]);
-
-  // Update available semesters when grade changes
-  useEffect(() => {
-    if (selectedGrade) {
-      const semesters = [...new Set(
-        studentScores
-          .filter(item => item.grade === selectedGrade)
-          .map(item => item.semester)
-      )];
-      setAvailableSemesters(semesters);
-      
-      // Set default selected semester if available
-      if (semesters.length > 0) {
-        setSelectedSemester(semesters[0]);
-      } else {
-        setSelectedSemester('');
-      }
-    }
-  }, [selectedGrade, studentScores]);
-
-  // Update available subjects when grade or semester changes
-  useEffect(() => {
-    if (selectedGrade && selectedSemester) {
-      const scoreData = studentScores.find(
-        item => item.grade === selectedGrade && item.semester === selectedSemester
-      );
-      
-      if (scoreData && scoreData.scores) {
-        const subjects = ['all', ...scoreData.scores.map(item => item.subject)];
-        setAvailableSubjects(subjects);
-        setSelectedSubject('all');
-      } else {
-        setAvailableSubjects(['all']);
-        setSelectedSubject('all');
-      }
-    }
-  }, [selectedGrade, selectedSemester, studentScores]);
-
-  // Filter scores based on selected filters
-  useEffect(() => {
-    if (selectedGrade && selectedSemester) {
-      const scoreData = studentScores.find(
-        item => item.grade === selectedGrade && item.semester === selectedSemester
-      );
-      
-      if (scoreData) {
-        // If a specific subject is selected, filter the scores
-        if (selectedSubject !== 'all') {
-          const filteredScoreData = {
-            ...scoreData,
-            scores: scoreData.scores.filter(item => item.subject === selectedSubject)
-          };
-          setFilteredScores([filteredScoreData]);
+      try {
+        const data = await getStudentGradeOverview(
+          student.id,
+          selectedGrade,
+          selectedSemester
+        );
+        
+        if (data && Object.keys(data).length > 0) {
+          setGradeData(data);
         } else {
-          setFilteredScores([scoreData]);
+          // API에서 데이터가 없거나 빈 객체를 반환한 경우 더미 데이터 사용
+          const dummyData = getDummyGradeData(student.id, selectedGrade, selectedSemester);
+          setGradeData(dummyData);
         }
-      } else {
-        setFilteredScores([]);
+        
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching student grade data:', err);
+        // API 호출 실패 시 더미 데이터 사용
+        const dummyData = getDummyGradeData(student.id, selectedGrade, selectedSemester);
+        setGradeData(dummyData);
+        setIsLoading(false);
       }
-    } else {
-      setFilteredScores([]);
+    };
+    
+    fetchStudentGradeData();
+  }, [student, selectedGrade, selectedSemester]);
+  
+  // 더미 데이터 가져오기 함수
+  const getDummyGradeData = (studentId, grade, semester) => {
+    console.log('Getting dummy data for student:', studentId, grade, semester);
+    
+    // 학생 ID와 더미 데이터 키 매핑
+    // 예: 20250001 -> 1, 20250002 -> 2 등
+    let dummyId = 1; // 기본값은 1
+    
+    if (studentId) {
+      // 학생 ID에서 마지막 숫자 추출
+      const lastDigits = studentId.toString().slice(-1);
+      const numericId = parseInt(lastDigits, 10);
+      
+      // 유효한 숫자이고 dummyStudentScoreData에 해당 키가 있으면 사용
+      if (!isNaN(numericId) && numericId > 0 && dummyStudentScoreData[numericId]) {
+        dummyId = numericId;
+      }
     }
-  }, [selectedGrade, selectedSemester, selectedSubject, studentScores]);
+    
+    console.log('Using dummy ID:', dummyId);
+    
+    // 더미 데이터에서 매핑된 ID에 해당하는 데이터 찾기
+    const studentData = dummyStudentScoreData[dummyId];
+    
+    if (!studentData) {
+      console.log('No dummy data found for ID:', dummyId);
+      return null;
+    }
+    
+    // 학년과 학기에 맞는 데이터 찾기
+    const gradeData = studentData.find(data => 
+      data.grade === `${grade}학년` && data.semester === semester
+    );
+    
+    // 해당 학년/학기 데이터가 없으면 첫 번째 데이터 사용
+    const finalData = gradeData || studentData[0];
+    
+    if (!finalData) {
+      console.log('No grade data found for grade/semester:', grade, semester);
+      return null;
+    }
+    
+    console.log('Found dummy data:', finalData);
+    
+    // API 응답 형식에 맞게 데이터 변환
+    return {
+      studentId: student.studentId || studentId,
+      studentName: student.name || '홍길동',
+      grade: grade || '1',
+      classNumber: student.classNumber || '7',
+      number: student.number || '1',
+      subjects: finalData.scores.map(score => ({
+        name: score.subject,
+        credits: score.unit,
+        midterm: score.midterm,
+        final: score.final,
+        performance: score.task,
+        totalScore: score.total,
+        rank: score.rank,
+        grade: score.grade
+      }))
+    };
+  };
+
+  // Loading state component
+  const LoadingMessage = () => (
+    <NoDataContainer>
+      <NoDataText>성적 정보를 불러오는 중입니다...</NoDataText>
+    </NoDataContainer>
+  );
+  
+  // Error state component
+  const ErrorMessage = () => (
+    <NoDataContainer>
+      <NoDataText>{error}</NoDataText>
+    </NoDataContainer>
+  );
 
   if (!student) return null;
-
-  // If no score data is available for this student
-  if (studentScores.length === 0) {
-    return (
-      <TabContainer>
-        <NoDataContainer>
-          <NoDataText>
-            {student.name} 학생의 성적 정보가 존재하지 않습니다.
-          </NoDataText>
-        </NoDataContainer>
-      </TabContainer>
-    );
-  }
 
   return (
     <TabContainer>
@@ -193,9 +216,10 @@ const ScoreTab = ({ student }) => {
           <FilterSelect 
             value={selectedGrade} 
             onChange={(e) => setSelectedGrade(e.target.value)}
+            disabled={isLoading}
           >
             {availableGrades.map((grade) => (
-              <option key={grade} value={grade}>{grade}</option>
+              <option key={grade} value={grade}>{grade}학년</option>
             ))}
           </FilterSelect>
         </FilterGroup>
@@ -205,7 +229,7 @@ const ScoreTab = ({ student }) => {
           <FilterSelect 
             value={selectedSemester} 
             onChange={(e) => setSelectedSemester(e.target.value)}
-            disabled={availableSemesters.length === 0}
+            disabled={isLoading}
           >
             {availableSemesters.map((semester) => (
               <option key={semester} value={semester}>{semester}</option>
@@ -229,27 +253,34 @@ const ScoreTab = ({ student }) => {
         </FilterGroup>
       </FilterContainer>
 
-      {filteredScores.length > 0 ? (
-        filteredScores.map((scoreData, index) => (
-          <ScoreCardContainer key={index}>
-            <ContentContainer>
-              <ScoreTable 
-                scoreData={scoreData} 
-                title={`${scoreData.grade} ${scoreData.semester} 성적표`} 
-              />
-              <ScoreRadarChart 
-                scores={scoreData.scores} 
-                title="과목별 성적 분포" 
-              />
-            </ContentContainer>
-          </ScoreCardContainer>
-        ))
-      ) : (
+      {isLoading ? (
+        <LoadingMessage />
+      ) : error ? (
+        <ErrorMessage />
+      ) : !gradeData ? (
         <NoDataContainer>
           <NoDataText>
             선택한 학년/학기에 해당하는 성적 데이터가 존재하지 않습니다.
           </NoDataText>
         </NoDataContainer>
+      ) : (
+        <ScoreCardContainer>
+          <ContentContainer>
+            <ScoreTable 
+              subjects={gradeData.subjects} 
+              totals={gradeData.totals}
+              finalSummary={gradeData.finalSummary}
+              title={`${selectedGrade}학년 ${selectedSemester} 성적표`}
+              grade={selectedGrade}
+              semester={selectedSemester}
+            />
+            <ScoreRadarChart 
+              labels={gradeData.radarChart.labels}
+              data={gradeData.radarChart.data}
+              title="과목별 성적 분포" 
+            />
+          </ContentContainer>
+        </ScoreCardContainer>
       )}
     </TabContainer>
   );

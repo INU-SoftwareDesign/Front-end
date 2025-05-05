@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import dummyCounselingData from '../../../data/dummyCounselingData';
+import counselingApi from '../../../api/counselingApi';
 
 const TabContainer = styled.div`
   padding: 20px;
@@ -247,21 +247,104 @@ const CounselingTab = ({ student, currentUser }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedCounseling, setEditedCounseling] = useState({});
   
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Fetch counseling records when student changes
   useEffect(() => {
-    if (student) {
-      // Filter counseling records for the current student
-      const studentCounselingRecords = dummyCounselingData.filter(
-        record => record.studentId === student.id
-      );
-      setCounselingRecords(studentCounselingRecords);
+    if (student && student.id) {
+      console.log('현재 학생 정보:', student);
+      console.log('학생 ID 타입:', typeof student.id);
+      fetchCounselingRecords(student.id);
     }
   }, [student]);
 
-  const handleDetailClick = (counseling) => {
-    setSelectedCounseling(counseling);
-    setEditedCounseling(counseling);
+  // Function to fetch counseling records from API
+  const fetchCounselingRecords = async (studentId) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      console.log('API 호출 studentId:', studentId);
+      
+      // 임시 해결책: 더미 데이터 직접 사용
+      const dummyData = [
+        {
+          id: 401,
+          studentId: 1, // 홍길동1의 ID가 1인 경우를 가정
+          studentName: '홍길동1',
+          grade: '1',
+          classNumber: '7',
+          number: '1',
+          requestDate: '2025-04-25',
+          counselingDate: '2025-05-05',
+          counselingTime: '10:00',
+          counselorName: '김교수',
+          counselingType: '교수상담',
+          counselingCategory: '학업',
+          status: '예약확정',
+          location: '교수연구실 A-301',
+          requestContent: '중간고사 결과에 대한 피드백을 받고 싶습니다.',
+          resultContent: '',
+          contactNumber: '010-1234-5678'
+        }
+      ];
+      
+      // API 호출 시도
+      const response = await counselingApi.getStudentCounselings(studentId);
+      
+      if (response.data && response.data.success) {
+        console.log('API 응답 데이터:', response.data.data);
+        
+        // API 응답 데이터가 비어있으면 더미 데이터 사용
+        if (response.data.data && response.data.data.length > 0) {
+          setCounselingRecords(response.data.data);
+          console.log('학생 상담 내역 조회 성공:', response.data.data);
+        } else {
+          console.log('API 응답이 비어있어 더미 데이터 사용');
+          // 학생 ID에 맞는 더미 데이터만 필터링
+          const filteredDummyData = dummyData.filter(
+            record => String(record.studentId) === String(studentId)
+          );
+          setCounselingRecords(filteredDummyData);
+          console.log('필터링된 더미 데이터:', filteredDummyData);
+        }
+      }
+    } catch (err) {
+      console.error('학생 상담 내역 조회 실패:', err);
+      setError('상담 내역을 불러오는데 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 상담 상세 정보 가져오기
+  const handleDetailClick = async (counseling) => {
+    setIsLoading(true);
     setIsModalOpen(true);
     setIsEditing(false);
+    
+    try {
+      // 상담 상세 정보 API 호출
+      const response = await counselingApi.getStudentCounselings(student.id, {
+        status: counseling.status
+      });
+      
+      // API 응답에서 해당 상담 정보 찾기
+      const detailedCounseling = response.data.data.find(item => item.id === counseling.id) || counseling;
+      
+      // 상담 정보 상태 업데이트
+      setSelectedCounseling(detailedCounseling);
+      setEditedCounseling({...detailedCounseling});
+      
+      console.log('상담 상세 정보 가져오기 성공:', detailedCounseling);
+    } catch (error) {
+      console.error('상담 상세 정보 가져오기 실패:', error);
+      // 오류 발생 시 기본 상담 정보 사용
+      setSelectedCounseling(counseling);
+      setEditedCounseling({...counseling});
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const closeModal = () => {
@@ -303,8 +386,11 @@ const CounselingTab = ({ student, currentUser }) => {
   
   return (
     <TabContainer>
+      {isLoading && <div style={{ textAlign: 'center', padding: '20px' }}>상담 내역을 불러오는 중...</div>}
+      {error && <div style={{ textAlign: 'center', padding: '20px', color: 'red' }}>{error}</div>}
+      
       <TableContainer>
-        {counselingRecords.length > 0 ? (
+        {!isLoading && !error && counselingRecords.length > 0 ? (
           <CounselingTable>
             <TableHeader>
               <TableRow>

@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styled from "styled-components";
-import dummyGradeData, { gradeInputPeriod } from "../../data/dummyGradeData";
+import dummyGradeData from "../../data/dummyGradeData";
 import { initialSubjectData } from "../../data/dummySubjectData";
+import { getGradeInputPeriod, getStudentGrades, submitStudentGrades } from "../../api/gradeApi";
 import { Radar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -449,23 +450,86 @@ const PeriodWarning = styled.div`
 const GradeEditPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const student = dummyGradeData.find((s) => s.id === parseInt(id));
 
-  // State for subject data
-  const [subjects, setSubjects] = useState(initialSubjectData);
-  const [status, setStatus] = useState(student?.gradeStatus || "미입력");
-  const semester = gradeInputPeriod.semester || "1학기";
+  // Find student by ID
+  const student = dummyGradeData.students.find(
+    (student) => student.id === parseInt(id)
+  );
 
-  // State for modals
+  // State for grade input period
+  const [gradeInputPeriod, setGradeInputPeriod] = useState({
+    isActive: true,
+    start: '2025-05-01',
+    end: '2025-05-15'
+  });
+
+  // Initial state
+  const [subjects, setSubjects] = useState([
+    { ...initialSubjectData, id: 1 },
+    { ...initialSubjectData, id: 2, name: "수학" },
+    { ...initialSubjectData, id: 3, name: "영어" },
+  ]);
+  const [status, setStatus] = useState("미입력"); // 미입력, 임시저장, 입력완료
+  const [semester, setSemester] = useState("1학기");
   const [showRatioModal, setShowRatioModal] = useState(false);
-  const [showSaveModal, setShowSaveModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState(null);
   const [tempRatios, setTempRatios] = useState({
-    midterm: 30,
+    midterm: 40,
     final: 40,
-    performance: 30,
+    performance: 20,
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Fetch grade input period and student grades on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch grade input period
+        const periodData = await getGradeInputPeriod();
+        setGradeInputPeriod(periodData);
+        
+        // Fetch student grades if student exists
+        if (student) {
+          const gradeData = await getStudentGrades(
+            id, 
+            student.grade, 
+            semester.replace('학기', '')
+          );
+          
+          if (gradeData.subjects && gradeData.subjects.length > 0) {
+            // Map API data to component state format
+            const mappedSubjects = gradeData.subjects.map((subject, index) => ({
+              id: index + 1,
+              name: subject.subject,
+              credits: subject.credits,
+              midtermScore: subject.midterm,
+              finalScore: subject.final,
+              performanceScore: subject.performance,
+              calculatedScore: subject.totalScore,
+              ratios: {
+                midterm: 40,
+                final: 40,
+                performance: 20
+              }
+            }));
+            setSubjects(mappedSubjects);
+            setStatus(gradeData.gradeStatus || '미입력');
+          }
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError(error.message);
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [id, student, semester]);
 
   // Calculate grade based on percentile
   const calculateGradeFromPercentile = (percentile) => {
@@ -691,10 +755,34 @@ const GradeEditPage = () => {
     setSubjects([...subjects, newSubject]);
   };
 
+  // Prepare grade data for API submission
+  const prepareGradeData = (saveStatus) => {
+    return {
+      grade: student.grade,
+      semester: semester.replace('학기', ''),
+      gradeStatus: saveStatus,
+      updatedAt: new Date().toISOString(),
+      subjects: subjects.map(subject => ({
+        subject: subject.name,
+        credits: parseInt(subject.credits) || 0,
+        midterm: parseInt(subject.midtermScore) || 0,
+        final: parseInt(subject.finalScore) || 0,
+        performance: parseInt(subject.performanceScore) || 0,
+        totalScore: parseFloat(subject.calculatedScore) || 0
+      }))
+    };
+  };
+
   // Handle save
-  const handleSave = () => {
-    setStatus("임시저장");
-    setShowSaveModal(true);
+  const handleSave = async () => {
+    try {
+      const gradeData = prepareGradeData("임시저장");
+      await submitStudentGrades(id, gradeData);
+      setStatus("임시저장");
+      setShowSaveModal(true);
+    } catch (error) {
+      alert(error.message);
+    }
   };
   
   // Close save modal and navigate back to grade management page
@@ -709,11 +797,18 @@ const GradeEditPage = () => {
   };
 
   // Confirm submission
-  const confirmSubmission = () => {
-    setStatus("입력완료");
-    setShowConfirmModal(false);
-    alert("성적이 제출되었습니다.");
-    navigate("/grades");
+  const confirmSubmission = async () => {
+    try {
+      const gradeData = prepareGradeData("입력완료");
+      await submitStudentGrades(id, gradeData);
+      setStatus("입력완료");
+      setShowConfirmModal(false);
+      alert("성적이 제출되었습니다.");
+      navigate("/grades");
+    } catch (error) {
+      setShowConfirmModal(false);
+      alert(error.message);
+    }
   };
 
   // Calculate totals for display
@@ -787,8 +882,6 @@ const GradeEditPage = () => {
                 <TableHeader>기말고사</TableHeader>
                 <TableHeader>수행평가</TableHeader>
                 <TableHeader>환산점수</TableHeader>
-                <TableHeader>석차</TableHeader>
-                <TableHeader>등급</TableHeader>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -865,8 +958,6 @@ const GradeEditPage = () => {
                       {subject.ratios ? "수정" : "설정"}
                     </ScoreButton>
                   </TableCell>
-                  <TableCell>{subject.rank || "-"}</TableCell>
-                  <TableCell>{subject.grade || "-"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -878,8 +969,6 @@ const GradeEditPage = () => {
                 <TableCell>{totals.totalFinal}</TableCell>
                 <TableCell>{totals.totalPerformance}</TableCell>
                 <TableCell>{Number(totals.totalCalculated).toFixed(2)}</TableCell>
-                <TableCell>-</TableCell>
-                <TableCell>-</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>평균</TableCell>
@@ -888,27 +977,11 @@ const GradeEditPage = () => {
                 <TableCell>{totals.avgFinal}</TableCell>
                 <TableCell>{totals.avgPerformance}</TableCell>
                 <TableCell>{totals.avgCalculated}</TableCell>
-                <TableCell>-</TableCell>
-                <TableCell>{calculateFinalGrade()}</TableCell>
               </TableRow>
             </TableFoot>
           </ScoreTable>
 
           <AddButton onClick={addSubject}>+ 과목 추가</AddButton>
-          
-          <FinalGradeSummary>
-            <SummaryTitle>최종 성적 요약</SummaryTitle>
-            <SummaryContent>
-              <SummaryItem>
-                <SummaryLabel>최종 석차:</SummaryLabel>
-                <SummaryValue>{calculateFinalRank()}</SummaryValue>
-              </SummaryItem>
-              <SummaryItem>
-                <SummaryLabel>최종 등급:</SummaryLabel>
-                <SummaryValue>{calculateFinalGrade()}</SummaryValue>
-              </SummaryItem>
-            </SummaryContent>
-          </FinalGradeSummary>
         </LeftSection>
 
         <RightSection>

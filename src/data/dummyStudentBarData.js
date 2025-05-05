@@ -1,9 +1,9 @@
 export const roles = ["teacher", "student", "parent"];
 
 export const classOptions = {
-  "1학년": ["1반", "2반", "3반", "4반", "5반", "6반", "7반"],
-  "2학년": ["1반", "2반", "3반", "4반", "5반"],
-  "3학년": ["1반", "2반", "3반", "4반"],
+  "1": ["1", "2", "3", "4", "5", "6", "7"],
+  "2": ["1", "2", "3", "4", "5"],
+  "3": ["1", "2", "3", "4"],
 };
 
 export const grades = Object.keys(classOptions);

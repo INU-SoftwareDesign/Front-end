@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import counselingApi from '../../../api/counselingApi';
 
 // Styled Components
 const Container = styled.div`
@@ -71,6 +72,47 @@ const ActionButton = styled.button`
   
   &:disabled {
     background-color: #ccc;
+    cursor: not-allowed;
+  }
+`;
+
+const PrimaryButton = styled.button`
+  background-color: #1D4EB0;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: #173d8a;
+  }
+  
+  &:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+`;
+
+const DangerButton = styled.button`
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: #d32f2f;
+  }
+  
+  &:disabled {
+    background-color: #ffcdd2;
     cursor: not-allowed;
   }
 `;
@@ -270,10 +312,12 @@ const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecord
   
   // Handle detail button click
   const handleDetailClick = (counseling) => {
-    setSelectedCounseling(counseling);
-    setEditedCounseling({...counseling});
+    // 초기 상태 설정
     setIsModalOpen(true);
     setIsEditing(false);
+    
+    // 상담 상세 정보 API 호출
+    fetchCounselingDetails(counseling);
     
     // Get booked times for the counseling date
     // In a real app, this would be fetched from an API
@@ -287,31 +331,105 @@ const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecord
     }
   };
   
+  // 상담 상세 정보 가져오기
+  const fetchCounselingDetails = async (counseling) => {
+    try {
+      // 상담 정보 API 호출 (통합된 API 사용)
+      const response = await counselingApi.getStudentCounselings(counseling.studentId, {
+        status: counseling.status
+      });
+      
+      // API 응답에서 해당 상담 정보 찾기
+      const detailedCounseling = response.data.data.find(item => item.id === counseling.id) || counseling;
+      
+      // 상담 정보 상태 업데이트
+      setSelectedCounseling(detailedCounseling);
+      setEditedCounseling({...detailedCounseling});
+      
+      console.log('상담 상세 정보 가져오기 성공:', detailedCounseling);
+    } catch (error) {
+      console.error('상담 상세 정보 가져오기 실패:', error);
+      // 오류 발생 시 기본 상담 정보 사용
+      setSelectedCounseling(counseling);
+      setEditedCounseling({...counseling});
+    }
+  };
+  
   // Handle edit button click
   const handleEditClick = () => {
     setIsEditing(true);
   };
   
   // Handle save button click
-  const handleSaveClick = () => {
-    // In a real app, this would make an API call to update the counseling record
-    setCounselingRecords(prevRecords => 
-      prevRecords.map(record => 
-        record.id === editedCounseling.id ? editedCounseling : record
-      )
-    );
-    setSelectedCounseling(editedCounseling);
-    setIsEditing(false);
+  const handleSaveClick = async () => {
+    try {
+      // 학생/학부모는 상담 시간과 내용만 수정 가능
+      const updateData = {
+        counselingTime: editedCounseling.counselingTime,
+        requestContent: editedCounseling.requestContent
+      };
+      
+      // API 호출
+      const response = await counselingApi.updateCounseling(editedCounseling.id, updateData);
+      
+      if (response.data && response.data.success) {
+        console.log('상담 정보 수정 성공:', response.data);
+        alert(response.data.data.message || '상담 정보가 성공적으로 수정되었습니다.');
+        
+        // 로컬 상태 업데이트
+        setCounselingRecords(prevRecords => 
+          prevRecords.map(record => 
+            record.id === editedCounseling.id ? editedCounseling : record
+          )
+        );
+        setSelectedCounseling(editedCounseling);
+        setIsEditing(false);
+        
+        // 상담 상세 정보 다시 불러오기
+        if (selectedCounseling) {
+          fetchCounselingDetails(selectedCounseling);
+        }
+      } else {
+        alert('상담 정보 수정 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('상담 정보 수정 실패:', error);
+      alert('상담 정보 수정 중 오류가 발생했습니다.');
+    }
   };
   
   // Handle cancel button click
-  const handleCancelCounseling = () => {
+  const handleCancelCounseling = async () => {
+    if (!selectedCounseling) return;
+    
     if (window.confirm('상담 예약을 취소하시겠습니까?')) {
-      // In a real app, this would make an API call to cancel the counseling
-      setCounselingRecords(prevRecords => 
-        prevRecords.filter(record => record.id !== selectedCounseling.id)
-      );
-      closeModal();
+      try {
+        // API 호출
+        const response = await counselingApi.deleteCounseling(selectedCounseling.id);
+        
+        if (response.data && response.data.success) {
+          console.log('상담 취소 성공:', response.data);
+          alert(response.data.data.message || '상담 예약이 취소되었습니다.');
+          
+          // 로컬 상태 업데이트
+          setCounselingRecords(prevRecords => 
+            prevRecords.filter(record => record.id !== selectedCounseling.id)
+          );
+          closeModal();
+        } else if (response.data && !response.data.success) {
+          // 오류 메시지 처리
+          const errorMessage = response.data.error?.message || '상담 취소 중 오류가 발생했습니다.';
+          alert(errorMessage);
+          
+          // 완료된 상담 취소 시도 시 추가 안내
+          if (response.data.error?.code === 'CANNOT_CANCEL_COMPLETED') {
+            alert('이미 완료된 상담은 취소할 수 없습니다.');
+          }
+        }
+      } catch (error) {
+        console.error('상담 취소 실패:', error);
+        alert('상담 취소 중 오류가 발생했습니다.');
+      }
     }
   };
   
@@ -342,7 +460,8 @@ const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecord
   
   // Check if counseling can be canceled or modified
   const canModify = (counseling) => {
-    return counseling.status !== '완료';
+    // 상담 상태가 '완료'가 아닐 때만 수정 가능
+    return counseling && counseling.status !== '완료';
   };
   
   return (
@@ -385,8 +504,7 @@ const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecord
                     </ActionButton>
                   </TableCell>
                   <TableCell>
-                    <ActionButton 
-                      color="#f44336"
+                    <DangerButton 
                       onClick={() => {
                         setSelectedCounseling(counseling);
                         handleCancelCounseling();
@@ -394,7 +512,7 @@ const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecord
                       disabled={!canModify(counseling)}
                     >
                       취소
-                    </ActionButton>
+                    </DangerButton>
                   </TableCell>
                 </TableRow>
               ))}
@@ -527,12 +645,7 @@ const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecord
             )}
             
             <ButtonContainer>
-              {canModify(selectedCounseling) && !isEditing && (
-                <ActionButton onClick={handleEditClick}>
-                  수정하기
-                </ActionButton>
-              )}
-              {isEditing && (
+              {isEditing ? (
                 <>
                   <CancelButton onClick={() => setIsEditing(false)}>
                     취소
@@ -541,11 +654,17 @@ const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecord
                     저장
                   </SaveButton>
                 </>
-              )}
-              {canModify(selectedCounseling) && (
-                <CancelButton onClick={handleCancelCounseling}>
-                  예약 취소
-                </CancelButton>
+              ) : (
+                <>
+                  <PrimaryButton onClick={handleEditClick} disabled={!canModify(selectedCounseling)}>
+                    수정
+                  </PrimaryButton>
+                  {canModify(selectedCounseling) && (
+                    <DangerButton onClick={handleCancelCounseling}>
+                      예약취소
+                    </DangerButton>
+                  )}
+                </>
               )}
             </ButtonContainer>
           </ModalContainer>

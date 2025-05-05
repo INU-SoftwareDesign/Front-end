@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import dummyStudentData from '../../data/dummyStudentData';
+import { getStudentById } from '../../api/studentApi';
+import useUserStore from '../../stores/useUserStore';
 import StudentProfileInfo from '../../components/studentDetail/StudentProfileInfo';
 import StudentTabs from '../../components/studentDetail/StudentTabs';
 import PersonalInfoTab from '../../components/studentDetail/tabContents/PersonalInfoTab';
@@ -48,23 +49,57 @@ const ContentContainer = styled.div`
   margin-top: 24px;
 `;
 
+const LoadingMessage = styled.div`
+  margin: 32px auto;
+  padding: 24px;
+  background-color: #f0f7ff;
+  border-radius: 8px;
+  font-family: 'Pretendard-Medium', sans-serif;
+  font-size: 18px;
+  color: #1D4EB0;
+  text-align: center;
+`;
+
+const ErrorMessage = styled.div`
+  margin: 32px auto;
+  padding: 24px;
+  background-color: #fff0f0;
+  border-radius: 8px;
+  font-family: 'Pretendard-Medium', sans-serif;
+  font-size: 18px;
+  color: #e74c3c;
+  text-align: center;
+`;
+
 const StudentDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [student, setStudent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('personal');
-  // In a real app, this would come from an auth context
-  const [currentUser, setCurrentUser] = useState({
-    role: 'teacher',
-    id: 'teacher123',
-  });
+  
+  // Get current user from store
+  const currentUser = useUserStore(state => state.currentUser);
 
   useEffect(() => {
-    // In a real app, you would fetch student data from an API
-    const foundStudent = dummyStudentData.find(s => s.id === parseInt(id));
-    if (foundStudent) {
-      setStudent(foundStudent);
-    }
+    const fetchStudentData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Fetch student data from API
+        const studentData = await getStudentById(id);
+        setStudent(studentData);
+      } catch (error) {
+        console.error('Failed to fetch student data:', error);
+        setError(error.message || '학생 정보를 불러오는데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchStudentData();
   }, [id]);
 
   const renderTabContent = () => {
@@ -90,10 +125,18 @@ const StudentDetailPage = () => {
     }
   };
 
-  if (!student) {
+  if (loading) {
     return (
       <PageContainer>
-        <h2>학생을 찾을 수 없습니다.</h2>
+        <LoadingMessage>학생 정보를 불러오는 중입니다...</LoadingMessage>
+      </PageContainer>
+    );
+  }
+  
+  if (error || !student) {
+    return (
+      <PageContainer>
+        <ErrorMessage>{error || '학생을 찾을 수 없습니다.'}</ErrorMessage>
         <BackButton onClick={() => navigate(-1)}>돌아가기</BackButton>
       </PageContainer>
     );

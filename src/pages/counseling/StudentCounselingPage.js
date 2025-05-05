@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../../contexts/UserContext';
+import useUserStore from '../../stores/useUserStore';
 import dummyStudentCounselingData from '../../data/dummyStudentCounselingData';
 import RequestTabContent from './components/RequestTabContent';
 import HistoryTabContent from './components/HistoryTabContent';
@@ -49,7 +49,7 @@ const ContentContainer = styled.div`
 
 const StudentCounselingPage = () => {
   const navigate = useNavigate();
-  const { currentUser } = useUser();
+  const currentUser = useUserStore(state => state.currentUser);
   const [activeTab, setActiveTab] = useState('request');
   const [counselingRecords, setCounselingRecords] = useState([]);
   

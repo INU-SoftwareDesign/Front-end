@@ -12,17 +12,48 @@ const GradeFilterBar = ({
   const [selectedSemester, setSelectedSemester] = useState("1학기");
   
   // Fixed values from teacher's information
-  const gradeText = userGrade || "1학년";
+  // 학년과 반 텍스트 형식화
+  const gradeText = userGrade ? `${userGrade}학년` : "1학년";
   const classText = userClass || "7반";
 
+  // 초기 렌더링 시에만 필터 업데이트
   useEffect(() => {
+    // 학년과 반 번호만 추출하여 전달
+    const gradeNumber = userGrade || "1";
+    const classNumber = userClass ? userClass.replace(/반$/, "") : "7";
+    
     onFilterChange({
       search,
-      grade: gradeText,
-      className: classText,
-      semester: selectedSemester,
+      grade: gradeNumber,
+      classNumber: classNumber,
+      semester: selectedSemester.replace(/학기$/, ""),
     });
-  }, [search, gradeText, classText, selectedSemester, onFilterChange]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  
+  // 필터 변경 시에만 필터 업데이트
+  const handleSearchChange = (e) => {
+    setSearch(e.target.value);
+    updateFilter(e.target.value, selectedSemester);
+  };
+  
+  const handleSemesterChange = (e) => {
+    setSelectedSemester(e.target.value);
+    updateFilter(search, e.target.value);
+  };
+  
+  // 필터 업데이트 함수
+  const updateFilter = (searchValue, semesterValue) => {
+    const gradeNumber = userGrade || "1";
+    const classNumber = userClass ? userClass.replace(/반$/, "") : "7";
+    
+    onFilterChange({
+      search: searchValue,
+      grade: gradeNumber,
+      classNumber: classNumber,
+      semester: semesterValue.replace(/학기$/, ""),
+    });
+  };
 
   return (
     <FilterBarContainer>
@@ -31,14 +62,14 @@ const GradeFilterBar = ({
           type="text"
           placeholder="이름 검색"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={handleSearchChange}
         />
         <GradeClassText>
           {gradeText} {classText}
         </GradeClassText>
         <Dropdown
           value={selectedSemester}
-          onChange={(e) => setSelectedSemester(e.target.value)}
+          onChange={handleSemesterChange}
         >
           <option value="1학기">1학기</option>
           <option value="2학기">2학기</option>

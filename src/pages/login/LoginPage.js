@@ -177,29 +177,7 @@ const ForgotPasswordLink = styled.a`
   }
 `;
 
-// API login function
-const apiLogin = async (id, password) => {
-  try {
-    // Prepare login credentials
-    const credentials = {
-      id,
-      password
-    };
-    
-    // Call login API
-    const response = await loginUser(credentials);
-    
-    // Extract user data and tokens from response
-    return {
-      success: true,
-      userData: response.user,
-      token: response.token,
-      refreshToken: response.refresh
-    };
-  } catch (error) {
-    throw error;
-  }
-};
+
 
 function LoginPage() {
   const navigate = useNavigate();

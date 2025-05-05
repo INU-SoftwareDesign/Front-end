@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import useStudentStore from "../../store/useStudentStore";
 import { classOptions, grades } from "../../data/dummyStudentBarData";
-import { useUser } from "../../contexts/UserContext";
+import useUserStore from "../../stores/useUserStore";
 
 const StudentFilterBar = ({
   userRole,
@@ -10,8 +10,8 @@ const StudentFilterBar = ({
   userClass,
   onFilterChange,
 }) => {
-  // Get user from UserContext
-  const { currentUser } = useUser();
+  // Get user from Zustand store
+  const currentUser = useUserStore(state => state.currentUser);
   const currentUserRole = currentUser?.role || 'teacher';
   
   const {

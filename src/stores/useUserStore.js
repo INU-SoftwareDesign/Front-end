@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { dummyUsers } from '../contexts/UserContext'; // Import dummy users for development
+import { loginUser, logoutUser } from '../api/userApi';
 
 /**
  * Zustand store for managing user information globally
@@ -22,11 +22,19 @@ const useUserStore = create(
         return true;
       },
       
-      logout: () => {
-        set({ 
-          currentUser: null,
-          isAuthenticated: false
-        });
+      logout: async () => {
+        try {
+          // userApi의 logoutUser 함수 호출 - 토큰 삭제 처리 포함
+          await logoutUser();
+        } catch (error) {
+          console.error('Logout error:', error);
+        } finally {
+          // 상태 초기화
+          set({ 
+            currentUser: null,
+            isAuthenticated: false
+          });
+        }
       },
       
       updateUserInfo: (updatedInfo) => {
@@ -89,17 +97,26 @@ const useUserStore = create(
         return get().isAuthenticated;
       },
       
-      // Development helpers
-      devLogin: (role) => {
-        const userData = dummyUsers[role];
-        if (userData) {
-          set({
-            currentUser: userData,
-            isAuthenticated: true
-          });
-          return true;
+      // Authentication with backend using userApi
+      loginWithCredentials: async (id, password) => {
+        try {
+          // userApi의 loginUser 함수 사용 - JWT 토큰 관리 포함
+          const response = await loginUser({ id, password });
+          
+          if (response.success) {
+            const userData = response.data.user;
+            set({ 
+              currentUser: userData,
+              isAuthenticated: true
+            });
+            return { success: true };
+          } else {
+            return { success: false, message: response.message || '로그인에 실패했습니다.' };
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          return { success: false, message: error.message || '로그인 중 오류가 발생했습니다.' };
         }
-        return false;
       }
     }),
     {

@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../../contexts/UserContext';
+import useUserStore from '../../stores/useUserStore';
 import counselingApi from '../../api/counselingApi';
 
 // Styled Components
@@ -397,7 +397,7 @@ const SecondaryButton = styled(Button)`
 
 const CounselingPage = () => {
   const navigate = useNavigate();
-  const { currentUser } = useUser();
+  const currentUser = useUserStore(state => state.currentUser);
   const [pendingCounselings, setPendingCounselings] = useState([]);
   const [scheduledCounselings, setScheduledCounselings] = useState([]);
   const [completedCounselings, setCompletedCounselings] = useState([]);

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import AccessDeniedModal from '../common/AccessDeniedModal';
-import { useUser } from '../../contexts/UserContext';
+import useUserStore from '../../stores/useUserStore';
 
 const ListItemContainer = styled.div`
   display: grid;
@@ -65,8 +65,8 @@ const StudentListItem = ({ student, index, canAccess: propCanAccess }) => {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   
-  // Get user from UserContext
-  const { currentUser } = useUser();
+  // Get user from Zustand store
+  const currentUser = useUserStore(state => state.currentUser);
   
   // Determine if the user can access this student's details
   const canAccess = () => {

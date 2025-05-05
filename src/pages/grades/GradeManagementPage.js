@@ -4,7 +4,7 @@ import GradeFilterBar from "../../components/grade/GradeFilterBar";
 import GradeListHeader from "../../components/grade/GradeListHeader";
 import GradeListItem from "../../components/grade/GradeListItem";
 import { getGradeManagementStatus } from "../../api/gradeApi";
-import { useUser } from "../../contexts/UserContext";
+import useUserStore from "../../stores/useUserStore";
 
 const PageContainer = styled.div`
   display: flex;
@@ -55,7 +55,7 @@ const NoAccessMessage = styled.div`
 `;
 
 const GradeManagementPage = () => {
-  const { currentUser } = useUser();
+  const currentUser = useUserStore(state => state.currentUser);
   const userRole = currentUser?.role || "teacher"; // Default to teacher for testing
   
   const [students, setStudents] = useState([]);

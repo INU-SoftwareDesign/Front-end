@@ -56,8 +56,11 @@ const NoDataMessage = styled.div`
 `;
 
 const StudentRecordPage = () => {
-  const currentUser = useUserStore(state => state.user);
-  const userRole = useUserStore(state => state.getUserRole());
+  // Get user from Zustand store
+  const currentUser = useUserStore(state => state.currentUser);
+  const userRole = currentUser?.role || 'teacher';
+  
+  // Continue using Zustand for student data
   const { 
     students, 
     isLoading, 
@@ -65,9 +68,20 @@ const StudentRecordPage = () => {
     fetchStudents, 
     search, 
     selectedGrade, 
-    selectedClass 
+    selectedClassNumber,
+    setGrade,
+    setClass 
   } = useStudentStore();
 
+  // Set initial filters based on teacher's class when component mounts
+  useEffect(() => {
+    if (currentUser && userRole === 'teacher') {
+      // Set the grade and class filters based on the teacher's assigned class
+      setGrade(currentUser.gradeLevel);
+      setClass(currentUser.classNumber);
+    }
+  }, [currentUser, userRole]);
+  
   // Fetch students when filters change
   useEffect(() => {
     const fetchData = async () => {
@@ -75,7 +89,7 @@ const StudentRecordPage = () => {
     };
     
     fetchData();
-  }, [search, selectedGrade, selectedClass, fetchStudents]);
+  }, [search, selectedGrade, selectedClassNumber, fetchStudents]);
   
   // Format grade and class for display
   const formatGrade = (grade) => `${grade}학년`;
@@ -89,7 +103,8 @@ const StudentRecordPage = () => {
     
     if (userRole === 'teacher') {
       // Teachers can only access students in their homeroom class
-      return currentUser.grade === student.grade && currentUser.class === student.class;
+      // Use gradeLevel and classNumber from UserContext structure
+      return currentUser.gradeLevel === student.grade && currentUser.classNumber === student.classNumber;
     }
     
     if (userRole === 'student') {
@@ -110,7 +125,7 @@ const StudentRecordPage = () => {
       <StudentFilterBar
         userRole={userRole}
         userGrade={formatGrade(selectedGrade)}
-        userClass={formatClass(selectedClass)}
+        userClass={formatClass(selectedClassNumber)}
       />
       <StudentListHeader />
       {isLoading ? (
@@ -125,8 +140,6 @@ const StudentRecordPage = () => {
             key={student.id} 
             student={student} 
             index={index} 
-            currentUser={currentUser}
-            canAccess={canAccessStudent(student)}
           />
         ))
       )}

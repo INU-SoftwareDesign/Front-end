@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import useUserStore from "../../stores/useUserStore";
-import { loginUser } from "../../api/userApi"; // Import login API
 import logoImage from "../../assets/logo/soseol_logo.png";
 
 // 페이지 레이아웃 스타일
@@ -204,8 +203,7 @@ const apiLogin = async (id, password) => {
 
 function LoginPage() {
   const navigate = useNavigate();
-  const login = useUserStore(state => state.login);
-  const devLogin = useUserStore(state => state.devLogin);
+  const loginWithCredentials = useUserStore(state => state.loginWithCredentials);
   const isAuthenticated = useUserStore(state => state.isAuthenticated);
   
   // State for form fields
@@ -270,23 +268,23 @@ function LoginPage() {
     setIsLoading(true);
     
     try {
-      // Call API login function
-      const response = await apiLogin(id, password);
+      // Call loginWithCredentials from Zustand store
+      const result = await loginWithCredentials(id, password);
       
-      // Handle successful login
-      console.log('로그인 성공:', response);
-      
-      // Store token in localStorage (already done in loginUser API function)
-      
-      // Use the login function from Zustand store
-      login(response.userData);
-      
-      // Redirect to main page (or dashboard)
-      navigate('/');
+      if (result.success) {
+        // Handle successful login
+        console.log('로그인 성공');
+        
+        // Redirect to main page (or dashboard)
+        navigate('/');
+      } else {
+        // Handle login error
+        setLoginError(result.message || '로그인에 실패했습니다. 다시 시도해주세요.');
+      }
     } catch (error) {
-      // Handle login error
+      // Handle unexpected errors
       console.error('로그인 실패:', error);
-      setLoginError(error.message || '로그인에 실패했습니다. 다시 시도해주세요.');
+      setLoginError('로그인 중 오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }

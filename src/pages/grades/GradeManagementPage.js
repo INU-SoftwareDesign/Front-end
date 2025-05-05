@@ -64,7 +64,7 @@ const GradeManagementPage = () => {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState({
     grade: "1",
-    class: "7",
+    classNumber: "7",
     semester: "1"
   });
 
@@ -77,7 +77,7 @@ const GradeManagementPage = () => {
       try {
         const data = await getGradeManagementStatus(
           filter.grade,
-          filter.class,
+          filter.classNumber,
           filter.semester
         );
         
@@ -97,7 +97,7 @@ const GradeManagementPage = () => {
   const handleFilterChange = (newFilter) => {
     setFilter({
       grade: newFilter.grade || "1",
-      class: newFilter.class || "7",
+      classNumber: newFilter.classNumber || "7",
       semester: newFilter.semester || "1"
     });
   };
@@ -106,8 +106,8 @@ const GradeManagementPage = () => {
     <PageContainer>
       <GradeFilterBar
         userRole={userRole}
-        userGrade={`${filter.grade}학년`}
-        userClass={`${filter.class}반`}
+        userGrade={filter.grade}
+        userClass={`${filter.classNumber}반`}
         onFilterChange={handleFilterChange}
       />
       

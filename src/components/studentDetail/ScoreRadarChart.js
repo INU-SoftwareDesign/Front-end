@@ -33,8 +33,8 @@ const NoDataMessage = styled.div`
   font-family: 'Pretendard-Medium', sans-serif;
 `;
 
-const ScoreRadarChart = ({ scores, title }) => {
-  if (!scores || scores.length === 0) {
+const ScoreRadarChart = ({ labels, data, title }) => {
+  if (!labels || !data || labels.length === 0 || data.length === 0) {
     return (
       <ChartContainer>
         <ChartTitle>{title || '과목별 성적 분포'}</ChartTitle>
@@ -43,10 +43,10 @@ const ScoreRadarChart = ({ scores, title }) => {
     );
   }
 
-  // Transform score data for the radar chart
-  const chartData = scores.map(item => ({
-    subject: item.subject,
-    total: item.total,
+  // Transform data for the radar chart
+  const chartData = labels.map((label, index) => ({
+    subject: label,
+    total: data[index],
     fullMark: 100
   }));
 

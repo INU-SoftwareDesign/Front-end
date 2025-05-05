@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import dummyStudentScoreData from '../../../data/dummyStudentScoreData';
+import { getStudentGradeOverview } from '../../../api/gradeApi';
 import ScoreTable from '../ScoreTable';
 import ScoreRadarChart from '../ScoreRadarChart';
 
@@ -81,109 +81,56 @@ const ScoreCardContainer = styled.div`
 `;
 
 const ScoreTab = ({ student }) => {
-  const [studentScores, setStudentScores] = useState([]);
-  const [selectedGrade, setSelectedGrade] = useState('');
-  const [selectedSemester, setSelectedSemester] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('all');
-  const [filteredScores, setFilteredScores] = useState([]);
-  const [availableGrades, setAvailableGrades] = useState([]);
-  const [availableSemesters, setAvailableSemesters] = useState([]);
-  const [availableSubjects, setAvailableSubjects] = useState([]);
+  const [selectedGrade, setSelectedGrade] = useState('1');
+  const [selectedSemester, setSelectedSemester] = useState('1학기');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [gradeData, setGradeData] = useState(null);
+  const [availableGrades, setAvailableGrades] = useState(['1', '2', '3']);
+  const [availableSemesters, setAvailableSemesters] = useState(['1학기', '2학기']);
 
-  // Load student score data
+  // Fetch student grade data when filters change
   useEffect(() => {
-    if (student && student.id) {
-      const scores = dummyStudentScoreData[student.id] || [];
-      setStudentScores(scores);
+    const fetchStudentGradeData = async () => {
+      if (!student || !student.id) return;
       
-      // Set available filter options
-      const grades = [...new Set(scores.map(item => item.grade))];
-      setAvailableGrades(grades);
+      setIsLoading(true);
+      setError(null);
       
-      // Set default selected grade if available
-      if (grades.length > 0 && !selectedGrade) {
-        setSelectedGrade(grades[0]);
+      try {
+        const data = await getStudentGradeOverview(
+          student.id,
+          selectedGrade,
+          selectedSemester
+        );
+        
+        setGradeData(data);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching student grade data:', err);
+        setError('성적 정보를 불러오는데 실패했습니다.');
+        setIsLoading(false);
       }
-    }
-  }, [student]);
+    };
+    
+    fetchStudentGradeData();
+  }, [student, selectedGrade, selectedSemester]);
 
-  // Update available semesters when grade changes
-  useEffect(() => {
-    if (selectedGrade) {
-      const semesters = [...new Set(
-        studentScores
-          .filter(item => item.grade === selectedGrade)
-          .map(item => item.semester)
-      )];
-      setAvailableSemesters(semesters);
-      
-      // Set default selected semester if available
-      if (semesters.length > 0) {
-        setSelectedSemester(semesters[0]);
-      } else {
-        setSelectedSemester('');
-      }
-    }
-  }, [selectedGrade, studentScores]);
-
-  // Update available subjects when grade or semester changes
-  useEffect(() => {
-    if (selectedGrade && selectedSemester) {
-      const scoreData = studentScores.find(
-        item => item.grade === selectedGrade && item.semester === selectedSemester
-      );
-      
-      if (scoreData && scoreData.scores) {
-        const subjects = ['all', ...scoreData.scores.map(item => item.subject)];
-        setAvailableSubjects(subjects);
-        setSelectedSubject('all');
-      } else {
-        setAvailableSubjects(['all']);
-        setSelectedSubject('all');
-      }
-    }
-  }, [selectedGrade, selectedSemester, studentScores]);
-
-  // Filter scores based on selected filters
-  useEffect(() => {
-    if (selectedGrade && selectedSemester) {
-      const scoreData = studentScores.find(
-        item => item.grade === selectedGrade && item.semester === selectedSemester
-      );
-      
-      if (scoreData) {
-        // If a specific subject is selected, filter the scores
-        if (selectedSubject !== 'all') {
-          const filteredScoreData = {
-            ...scoreData,
-            scores: scoreData.scores.filter(item => item.subject === selectedSubject)
-          };
-          setFilteredScores([filteredScoreData]);
-        } else {
-          setFilteredScores([scoreData]);
-        }
-      } else {
-        setFilteredScores([]);
-      }
-    } else {
-      setFilteredScores([]);
-    }
-  }, [selectedGrade, selectedSemester, selectedSubject, studentScores]);
+  // Loading state component
+  const LoadingMessage = () => (
+    <NoDataContainer>
+      <NoDataText>성적 정보를 불러오는 중입니다...</NoDataText>
+    </NoDataContainer>
+  );
+  
+  // Error state component
+  const ErrorMessage = () => (
+    <NoDataContainer>
+      <NoDataText>{error}</NoDataText>
+    </NoDataContainer>
+  );
 
   if (!student) return null;
-
-  // If no score data is available for this student
-  if (studentScores.length === 0) {
-    return (
-      <TabContainer>
-        <NoDataContainer>
-          <NoDataText>
-            {student.name} 학생의 성적 정보가 존재하지 않습니다.
-          </NoDataText>
-        </NoDataContainer>
-      </TabContainer>
-    );
-  }
 
   return (
     <TabContainer>
@@ -193,9 +140,10 @@ const ScoreTab = ({ student }) => {
           <FilterSelect 
             value={selectedGrade} 
             onChange={(e) => setSelectedGrade(e.target.value)}
+            disabled={isLoading}
           >
             {availableGrades.map((grade) => (
-              <option key={grade} value={grade}>{grade}</option>
+              <option key={grade} value={grade}>{grade}학년</option>
             ))}
           </FilterSelect>
         </FilterGroup>
@@ -205,7 +153,7 @@ const ScoreTab = ({ student }) => {
           <FilterSelect 
             value={selectedSemester} 
             onChange={(e) => setSelectedSemester(e.target.value)}
-            disabled={availableSemesters.length === 0}
+            disabled={isLoading}
           >
             {availableSemesters.map((semester) => (
               <option key={semester} value={semester}>{semester}</option>
@@ -229,27 +177,32 @@ const ScoreTab = ({ student }) => {
         </FilterGroup>
       </FilterContainer>
 
-      {filteredScores.length > 0 ? (
-        filteredScores.map((scoreData, index) => (
-          <ScoreCardContainer key={index}>
-            <ContentContainer>
-              <ScoreTable 
-                scoreData={scoreData} 
-                title={`${scoreData.grade} ${scoreData.semester} 성적표`} 
-              />
-              <ScoreRadarChart 
-                scores={scoreData.scores} 
-                title="과목별 성적 분포" 
-              />
-            </ContentContainer>
-          </ScoreCardContainer>
-        ))
-      ) : (
+      {isLoading ? (
+        <LoadingMessage />
+      ) : error ? (
+        <ErrorMessage />
+      ) : !gradeData ? (
         <NoDataContainer>
           <NoDataText>
             선택한 학년/학기에 해당하는 성적 데이터가 존재하지 않습니다.
           </NoDataText>
         </NoDataContainer>
+      ) : (
+        <ScoreCardContainer>
+          <ContentContainer>
+            <ScoreTable 
+              subjects={gradeData.subjects} 
+              totals={gradeData.totals}
+              finalSummary={gradeData.finalSummary}
+              title={`${selectedGrade}학년 ${selectedSemester} 성적표`} 
+            />
+            <ScoreRadarChart 
+              labels={gradeData.radarChart.labels}
+              data={gradeData.radarChart.data}
+              title="과목별 성적 분포" 
+            />
+          </ContentContainer>
+        </ScoreCardContainer>
       )}
     </TabContainer>
   );

@@ -1,14 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import GradeFilterBar from "../../components/grade/GradeFilterBar";
 import GradeListHeader from "../../components/grade/GradeListHeader";
 import GradeListItem from "../../components/grade/GradeListItem";
-import dummyGradeData from "../../data/dummyGradeData";
+import { getGradeManagementStatus } from "../../api/gradeApi";
 import { useUser } from "../../contexts/UserContext";
 
 const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
+`;
+
+const LoadingMessage = styled.div`
+  margin: 32px auto;
+  padding: 24px;
+  background-color: #f0f7ff;
+  border-radius: 8px;
+  font-family: 'Pretendard-Medium', sans-serif;
+  font-size: 18px;
+  color: #1D4EB0;
+  text-align: center;
+`;
+
+const ErrorMessage = styled.div`
+  margin: 32px auto;
+  padding: 24px;
+  background-color: #fff0f0;
+  border-radius: 8px;
+  font-family: 'Pretendard-Medium', sans-serif;
+  font-size: 18px;
+  color: #e74c3c;
+  text-align: center;
+`;
+
+const SemesterPeriod = styled.div`
+  margin: 16px 24px;
+  padding: 12px 16px;
+  background-color: #f0f7ff;
+  border-radius: 6px;
+  font-family: 'Pretendard-Medium', sans-serif;
+  font-size: 14px;
+  color: #1D4EB0;
 `;
 
 const NoAccessMessage = styled.div`
@@ -25,29 +57,80 @@ const NoAccessMessage = styled.div`
 const GradeManagementPage = () => {
   const { currentUser } = useUser();
   const userRole = currentUser?.role || "teacher"; // Default to teacher for testing
-  const [filteredData, setFilteredData] = useState(dummyGradeData);
+  
+  const [students, setStudents] = useState([]);
+  const [semesterPeriod, setSemesterPeriod] = useState({ start: '', end: '' });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filter, setFilter] = useState({
+    grade: "1",
+    class: "7",
+    semester: "1"
+  });
 
-  const handleFilterChange = (filter) => {
-    console.log(filter);
-    // In a real app, you would filter the data based on the filter criteria
-    // For now, we'll just use the original data
-    setFilteredData(dummyGradeData);
+  // Fetch grade management status when component mounts or filter changes
+  useEffect(() => {
+    const fetchGradeManagementStatus = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const data = await getGradeManagementStatus(
+          filter.grade,
+          filter.class,
+          filter.semester
+        );
+        
+        setStudents(data.students || []);
+        setSemesterPeriod(data.semesterPeriod || { start: '', end: '' });
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching grade management status:', error);
+        setError(error.message || '성적 목록을 불러오는데 실패했습니다.');
+        setIsLoading(false);
+      }
+    };
+    
+    fetchGradeManagementStatus();
+  }, [filter]);
+
+  const handleFilterChange = (newFilter) => {
+    setFilter({
+      grade: newFilter.grade || "1",
+      class: newFilter.class || "7",
+      semester: newFilter.semester || "1"
+    });
   };
 
   return (
     <PageContainer>
       <GradeFilterBar
         userRole={userRole}
-        userGrade="1학년"
-        userClass="7반"
+        userGrade={`${filter.grade}학년`}
+        userClass={`${filter.class}반`}
         onFilterChange={handleFilterChange}
       />
+      
+      {semesterPeriod.start && semesterPeriod.end && (
+        <SemesterPeriod>
+          성적 입력 기간: {semesterPeriod.start} ~ {semesterPeriod.end}
+        </SemesterPeriod>
+      )}
+      
       {userRole === "teacher" && (
         <>
           <GradeListHeader />
-          {filteredData.map((student, index) => (
-            <GradeListItem key={student.id} student={student} index={index} />
-          ))}
+          {isLoading ? (
+            <LoadingMessage>성적 정보를 불러오는 중입니다...</LoadingMessage>
+          ) : error ? (
+            <ErrorMessage>{error}</ErrorMessage>
+          ) : students.length === 0 ? (
+            <NoAccessMessage>해당 학급의 성적 정보가 없습니다.</NoAccessMessage>
+          ) : (
+            students.map((student, index) => (
+              <GradeListItem key={student.id} student={student} index={index} />
+            ))
+          )}
         </>
       )}
       {userRole !== "teacher" && (

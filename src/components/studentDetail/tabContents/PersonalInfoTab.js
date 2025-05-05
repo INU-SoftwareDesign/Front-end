@@ -108,8 +108,9 @@ const PersonalInfoTab = ({ student, currentUser }) => {
   };
 
   // Check if the current user is a teacher or the student themselves
-  const canEditProfile =
-    currentUser.role === "teacher" || currentUser.id === student.studentId;
+  const canEditProfile = currentUser && (
+    currentUser.role === "teacher" || currentUser.id === student.studentId
+  );
 
   return (
     <TabContainer>
@@ -139,7 +140,7 @@ const PersonalInfoTab = ({ student, currentUser }) => {
               <TableRow>
                 <TableHeader>학년/반/번호</TableHeader>
                 <TableData>
-                  {student.grade}학년 {student.class}반{" "}
+                  {student.grade}학년 {student.classNumber}반{" "}
                   {student.number}번
                 </TableData>
               </TableRow>
@@ -171,7 +172,7 @@ const PersonalInfoTab = ({ student, currentUser }) => {
                 <TableRow key={index}>
                   <TableHeader>{history.grade}학년</TableHeader>
                   <TableData>
-                    {history.class}반 {history.number}번 (담임:{" "}
+                    {history.classNumber}반 {history.number}번 (담임:{" "}
                     {history.homeroomTeacher})
                   </TableData>
                 </TableRow>

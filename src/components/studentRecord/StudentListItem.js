@@ -87,7 +87,25 @@ const StudentListItem = ({ student, index, canAccess: propCanAccess }) => {
     
     if (currentUser.role === 'student') {
       // Students can only access their own information
-      return currentUser.id === student.id;
+      // studentId를 사용하여 비교 (예: '20250001')
+      if (currentUser.studentId && student.studentId) {
+        return currentUser.studentId === student.studentId;
+      }
+      
+      // 또는 사용자 ID와 학생 ID가 일치하는지 확인
+      if (currentUser.id && student.id) {
+        // 문자열로 변환하여 비교
+        return String(currentUser.id) === String(student.id);
+      }
+      
+      // 학생 번호로 비교
+      if (currentUser.number && student.number) {
+        return String(currentUser.number) === String(student.number) &&
+               String(currentUser.grade) === String(student.grade) &&
+               String(currentUser.classNumber) === String(student.classNumber);
+      }
+      
+      return false;
     }
     
     if (currentUser.role === 'parent') {

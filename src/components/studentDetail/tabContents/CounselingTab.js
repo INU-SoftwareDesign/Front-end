@@ -240,7 +240,10 @@ const EmptyStateText = styled.p`
   color: #666;
 `;
 
-const CounselingTab = ({ student, currentUser }) => {
+const CounselingTab = ({ student, studentUrlId, forceLoad = false, currentUser }) => {
+  // 디버깅용 로그
+  console.log('CounselingTab 컴포넌트 렌더링:', { studentUrlId, studentId: student?.studentId, forceLoad });
+  
   const [counselingRecords, setCounselingRecords] = useState([]);
   const [selectedCounseling, setSelectedCounseling] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -250,17 +253,40 @@ const CounselingTab = ({ student, currentUser }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch counseling records when student changes
+  // 컴포넌트 마운트 시 상담 데이터 가져오기
   useEffect(() => {
-    if (student && student.id) {
-      console.log('현재 학생 정보:', student);
-      console.log('학생 ID 타입:', typeof student.id);
-      fetchCounselingRecords(student.id);
+    // URL에서 가져온 ID가 있으면 그것을 사용, 없으면 student 객체의 studentId 필요
+    if (studentUrlId || (student && student.studentId)) {
+      console.log('CounselingTab 컴포넌트 마운트 시 데이터 가져오기 시도:', { studentUrlId, studentId: student?.studentId });
+      const idToUse = studentUrlId || student.studentId;
+      fetchCounselingRecords(idToUse);
     }
-  }, [student]);
+  }, [studentUrlId, student]);
+  
+  // forceLoad prop이 변경될 때 데이터 다시 가져오기 (탭 클릭 시)
+  useEffect(() => {
+    // URL에서 가져온 ID가 있으면 그것을 사용, 없으면 student 객체의 studentId 필요
+    if (studentUrlId || (student && student.studentId)) {
+      console.log('forceLoad useEffect 호출:', { forceLoad, studentUrlId, studentId: student?.studentId });
+      
+      // forceLoad가 변경되면 항상 API 호출
+      console.log('CounselingTab이 활성화되어 데이터를 다시 가져옵니다.');
+      // 비동기 함수 호출을 위해 setTimeout 사용
+      setTimeout(() => {
+        console.log('상담 데이터 가져오기 시작...');
+        const idToUse = studentUrlId || student.studentId;
+        fetchCounselingRecords(idToUse);
+      }, 0);
+    }
+  }, [forceLoad, studentUrlId, student]);
 
   // Function to fetch counseling records from API
   const fetchCounselingRecords = async (studentId) => {
+    if (!studentId) {
+      console.error('유효한 studentId가 없습니다.');
+      return;
+    }
+    
     setIsLoading(true);
     setError(null);
     try {
@@ -305,8 +331,8 @@ const CounselingTab = ({ student, currentUser }) => {
           const filteredDummyData = dummyData.filter(
             record => String(record.studentId) === String(studentId)
           );
-          setCounselingRecords(filteredDummyData);
-          console.log('필터링된 더미 데이터:', filteredDummyData);
+          setCounselingRecords(filteredDummyData.length > 0 ? filteredDummyData : dummyData);
+          console.log('필터링된 더미 데이터:', filteredDummyData.length > 0 ? filteredDummyData : dummyData);
         }
       }
     } catch (err) {
@@ -324,8 +350,10 @@ const CounselingTab = ({ student, currentUser }) => {
     setIsEditing(false);
     
     try {
+      // URL에서 가져온 ID를 우선적으로 사용
+      const idToUse = studentUrlId || student.studentId;
       // 상담 상세 정보 API 호출
-      const response = await counselingApi.getStudentCounselings(student.id, {
+      const response = await counselingApi.getStudentCounselings(idToUse, {
         status: counseling.status
       });
       

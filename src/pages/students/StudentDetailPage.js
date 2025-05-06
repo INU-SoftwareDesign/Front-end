@@ -79,6 +79,7 @@ const StudentDetailPage = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('personal');
   const [scoreTabLoaded, setScoreTabLoaded] = useState(false);
+  const [counselingTabLoaded, setCounselingTabLoaded] = useState(false);
   
   // Get current user from store
   const currentUser = useUserStore(state => state.currentUser);
@@ -114,6 +115,13 @@ const StudentDetailPage = () => {
       setScoreTabLoaded(prev => !prev);
       console.log('성적 탭 클릭됨, API 호출 트리거');
     }
+    
+    // 상담 탭을 클릭했을 때 로드 상태 업데이트
+    if (tabId === 'counseling') {
+      // 현재 값의 반대로 설정하여 매번 변경되도록 함
+      setCounselingTabLoaded(prev => !prev);
+      console.log('상담 탭 클릭됨, API 호출 트리거');
+    }
   };
 
   // 탭 콘텐츠 렌더링 전에 디버깅 로그 추가
@@ -122,7 +130,8 @@ const StudentDetailPage = () => {
     console.log('StudentDetailPage 탭 콘텐츠 렌더링:', { 
       activeTab, 
       studentId: student?.studentId, 
-      scoreTabLoaded 
+      scoreTabLoaded,
+      counselingTabLoaded
     });
     
     switch (activeTab) {
@@ -145,7 +154,8 @@ const StudentDetailPage = () => {
       case 'reading':
         return <ReadingTab student={student} />;
       case 'counseling':
-        return <CounselingTab student={student} currentUser={currentUser} />;
+        console.log('CounselingTab 렌더링 전 데이터:', { urlId: id, studentId: student?.studentId, counselingTabLoaded });
+        return <CounselingTab student={student} studentUrlId={id} forceLoad={counselingTabLoaded} currentUser={currentUser} />;
       case 'feedback':
         return <FeedbackTab student={student} />;
       default:

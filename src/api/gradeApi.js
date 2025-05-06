@@ -130,7 +130,7 @@ export const getStudentGradeOverview = async (studentId, grade, semester) => {
  */
 export const getGradeManagementStatus = async (grade, classNum, semester) => {
   try {
-    const response = await apiClient.get('/grades/mangement-status', {
+    const response = await apiClient.get('/grades/management-status', {
       params: { grade, classNumber: classNum, semester }
     });
     return response.data;

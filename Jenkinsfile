@@ -14,12 +14,12 @@ pipeline {
                 withCredentials([string(credentialsId: 'REACT_API_URL', variable: 'API_URL')]) {
                     sh '''
                         echo "REACT_APP_API_BASE_URL=$API_URL" > .env
-                        cat .env
+                        cp .env ./src/.env
+                        cat ./src/.env
                     '''
                 }
             }
         }
-
 
         stage('Docker Build') {
             steps {
@@ -31,7 +31,7 @@ pipeline {
             steps {
                 sh 'docker stop react-container || true'
                 sh 'docker rm react-container || true'
-                sh 'docker run -d -p 3000:3000 --env-file .env --name react-container react-app'
+                sh 'docker run -d -p 3000:3000 --name react-container react-app'
             }
         }
     }

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaBell, FaUser, FaCaretDown, FaSignOutAlt, FaCog, FaUserCircle } from 'react-icons/fa';
 import useUserStore from '../../stores/useUserStore';
 import { logoutUser, getCurrentUser } from '../../api/userApi';
+import { getStudentById } from '../../api/studentApi';
 import logoImage from '../../assets/logo/soseol_logo.png';
 
 const NavContainer = styled.nav`
@@ -383,6 +384,7 @@ const Navbar = ({ userName, profileName, profileDetail, userRole }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [userDetails, setUserDetails] = useState(null);
+  const [childInfo, setChildInfo] = useState(null);
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
   
@@ -401,6 +403,34 @@ const Navbar = ({ userName, profileName, profileDetail, userRole }) => {
       case 'student': return '학생';
       case 'parent': return '학부모';
       default: return role;
+    }
+  };
+  
+  // Format role with additional details
+  const formatRoleWithDetails = () => {
+    if (!currentUser || !userDetails) return '';
+    
+    const role = currentUser.role;
+    
+    switch(role) {
+      case 'teacher': 
+        return '교사';
+      case 'student': 
+        // 학생인 경우 학년, 반, 번호 표시
+        if (userDetails.grade && userDetails.classNumber && userDetails.number) {
+          return `${userDetails.grade}학년 ${userDetails.classNumber}반 ${userDetails.number}번 학생`;
+        }
+        return '학생';
+      case 'parent': 
+        // 학부모인 경우 자녀 이름 표시
+        if (childInfo && childInfo.name) {
+          return `${childInfo.name}의 학부모`;
+        } else if (userDetails.childName) {
+          return `${userDetails.childName}의 학부모`;
+        }
+        return '학부모';
+      default: 
+        return role;
     }
   };
 
@@ -425,6 +455,17 @@ const Navbar = ({ userName, profileName, profileDetail, userRole }) => {
         try {
           const userData = await getCurrentUser();
           setUserDetails(userData);
+          
+          // 학부모인 경우 자녀 정보 가져오기
+          if (userData.role === 'parent' && userData.childStudentId) {
+            try {
+              const studentData = await getStudentById(userData.childStudentId);
+              setChildInfo(studentData);
+              console.log('자녀 정보 가져오기 성공:', studentData);
+            } catch (childError) {
+              console.error('자녀 정보 가져오기 실패:', childError);
+            }
+          }
         } catch (error) {
           console.error('사용자 정보 가져오기 실패:', error);
         }
@@ -550,6 +591,16 @@ const Navbar = ({ userName, profileName, profileDetail, userRole }) => {
                     담임: {userDetails.grade}학년 {userDetails.classNumber}반
                   </ProfileDetail>
                 )}
+                {userDetails && userDetails.role === 'student' && userDetails.grade && userDetails.classNumber && userDetails.number && (
+                  <ProfileDetail>
+                    {userDetails.grade}학년 {userDetails.classNumber}반 {userDetails.number}번
+                  </ProfileDetail>
+                )}
+                {userDetails && userDetails.role === 'parent' && childInfo && (
+                  <ProfileDetail>
+                    자녀: {childInfo.name} ({childInfo.grade}학년 {childInfo.classNumber}반 {childInfo.number}번)
+                  </ProfileDetail>
+                )}
               </ProfileInfo>
             </ProfileHeader>
             
@@ -560,7 +611,7 @@ const Navbar = ({ userName, profileName, profileDetail, userRole }) => {
           </ProfileDropdown>
         </NavItem>
         <NavItem>
-          <UserRole>{formatRole(displayUserRole)}</UserRole>
+          <UserRole>{formatRoleWithDetails() || formatRole(displayUserRole)}</UserRole>
         </NavItem>
         <NavItem>
           <LogoutButton onClick={() => setIsLogoutModalOpen(true)}>

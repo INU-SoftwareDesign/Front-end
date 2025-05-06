@@ -9,21 +9,11 @@ pipeline {
             }
         }
 
-        stage('Write .env') {
-            steps {
-                withCredentials([string(credentialsId: 'REACT_API_URL', variable: 'API_URL')]) {
-                    sh '''
-                        echo "REACT_APP_API_BASE_URL=$API_URL" > .env
-                        cp .env ./src/.env
-                        cat ./src/.env
-                    '''
-                }
-            }
-        }
-
         stage('Docker Build') {
             steps {
-                sh 'docker build -t react-app .'
+                withCredentials([string(credentialsId: 'REACT_API_URL', variable: 'API_URL')]) {
+                    sh 'docker build --build-arg REACT_APP_API_BASE_URL=$API_URL -t react-app .'
+                }
             }
         }
 

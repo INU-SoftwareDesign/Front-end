@@ -1,11 +1,16 @@
 # 1단계: 앱 빌드
 FROM node:18 AS build
 WORKDIR /app
+
 COPY package*.json ./
-COPY .env .env
 RUN npm install
+
 COPY . .
-ENV NODE_OPTIONS=--max-old-space-size=1024
+
+# ⬅️ 환경변수 전달
+ARG REACT_APP_API_BASE_URL
+ENV REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
+
 RUN npm run build
 
 # 2단계: 정적 파일 서빙

@@ -104,7 +104,7 @@ const GradeListItem = ({ student, index }) => {
         </NameInfo>
       </NameContainer>
       <InfoText>{student.grade}</InfoText>
-      <InfoText>{student.class}</InfoText>
+      <InfoText>{student.classNumber}</InfoText>
       <InfoText>{student.number}</InfoText>
       <GradeStatusContainer>
         <GradeStatus status={student.gradeStatus}>

@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        REACT_APP_API_URL = credentials('REACT_API_URL')  // Jenkins에 등록된 값 사용
-    }
-
     stages {
         stage('Clone') {
             steps {
@@ -13,17 +9,11 @@ pipeline {
             }
         }
 
-        stage('Write .env') {
-            steps {
-                sh """
-                    echo "REACT_APP_API_BASE_URL=${REACT_APP_API_URL}" > .env
-                """
-            }
-        }
-
         stage('Docker Build') {
             steps {
-                sh 'docker build -t react-app .'
+                withCredentials([string(credentialsId: 'REACT_API_URL', variable: 'API_URL')]) {
+                    sh 'docker build --build-arg REACT_APP_API_BASE_URL=$API_URL -t react-app .'
+                }
             }
         }
 

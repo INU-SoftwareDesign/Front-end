@@ -34,10 +34,20 @@ apiClient.interceptors.response.use(
   (error) => {
     // Handle unauthorized errors (401)
     if (error.response && error.response.status === 401) {
-      // Clear localStorage and redirect to login
+      // Check if this is a logout request
+      const isLogoutRequest = error.config && 
+                             error.config.url && 
+                             error.config.url.includes('/auth/logout');
+      
+      // Clear localStorage
       localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      localStorage.removeItem('refreshToken');
+      
+      // Only redirect to login if it's not a logout request
+      if (!isLogoutRequest) {
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     
     return Promise.reject(error);

@@ -62,14 +62,23 @@ export const UserProvider = ({ children, mockUser = null }) => {
   };
 
   // Logout function
-  const logout = () => {
-    setCurrentUser(null);
-    setIsAuthenticated(false);
-    // Clear stored user data
-    localStorage.removeItem('user');
-    
-    // Synchronize with Zustand store
-    zustandLogout();
+  const logout = async () => {
+    try {
+      // Synchronize with Zustand store - await the async function
+      await zustandLogout();
+      
+      // Update context state after Zustand is updated
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      // Clear stored user data
+      localStorage.removeItem('user');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Still clear local state even if there's an error
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('user');
+    }
   };
 
   // Check if user is already logged in (from localStorage)

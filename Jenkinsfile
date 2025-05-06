@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage('Clone') {
             steps {
-                git branch: 'feature/hjh',
+                git branch: 'main',
                     url: 'https://github.com/INU-SoftwareDesign/Front-end.git'
             }
         }

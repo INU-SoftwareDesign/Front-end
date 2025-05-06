@@ -67,6 +67,7 @@ export const getStudentById = async (studentId) => {
     
     // Create a detailed student object that matches the API response format
     return {
+      id: studentId, // 중요: id 속성 추가 - ScoreTab에서 필요
       profileImage: student.profileImage,
       name: student.name,
       studentId: student.studentId,

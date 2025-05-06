@@ -75,21 +75,21 @@ const GradeManagementPage = () => {
   // Fetch grade management status when component mounts or filter changes
   useEffect(() => {
     const fetchGradeManagementStatus = async () => {
-      setIsLoading(true);
-      setError(null);
-      
       try {
+        setIsLoading(true);
+        setError(null);
+        
+        // API 호출
         const data = await getGradeManagementStatus(
           filter.grade,
           filter.classNumber,
           filter.semester
         );
         
-        // 현재 로그인한 교사의 학급 학생들만 필터링
         let filteredStudents = data.students || [];
         
-        // 현재 교사의 학년/반과 일치하는 학생들만 필터링
-        if (userRole === 'teacher') {
+        // 교사가 자신의 학급만 볼 수 있도록 필터링
+        if (userRole === 'teacher' && userGrade && userClassNumber) {
           filteredStudents = filteredStudents.filter(student => 
             student.grade === userGrade && 
             student.classNumber === userClassNumber
@@ -102,6 +102,13 @@ const GradeManagementPage = () => {
           return parseInt(a.number) - parseInt(b.number);
         });
         
+        // 현재 선택된 학년/학기 정보를 학생 객체에 추가
+        filteredStudents = filteredStudents.map(student => ({
+          ...student,
+          currentGrade: filter.grade,
+          currentSemester: filter.semester
+        }));
+        
         setStudents(filteredStudents);
         setSemesterPeriod(data.semesterPeriod || { start: '', end: '' });
         setIsLoading(false);
@@ -113,7 +120,7 @@ const GradeManagementPage = () => {
     };
     
     fetchGradeManagementStatus();
-  }, [filter]);
+  }, [filter, userRole, userGrade, userClassNumber]);
 
   const handleFilterChange = (newFilter) => {
     setFilter({

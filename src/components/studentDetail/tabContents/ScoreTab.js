@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { getStudentGradeOverview } from '../../../api/gradeApi';
 import ScoreTable from '../ScoreTable';
 import ScoreRadarChart from '../ScoreRadarChart';
-import dummyStudentScoreData from '../../../data/dummyStudentScoreData';
+
+
 
 const TabContainer = styled.div`
   padding: 20px;
@@ -89,195 +90,396 @@ const ScoreTab = ({ student, studentUrlId, forceLoad = false }) => {
   const [selectedGrade, setSelectedGrade] = useState('1');
   const [selectedSemester, setSelectedSemester] = useState('1학기');
   const [selectedSubject, setSelectedSubject] = useState('all');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [gradeData, setGradeData] = useState(null);
+  
+  // 탭 로드에 대한 추적을 위한 ref
+  const dataLoaded = useRef(false);
+  
+  // 캐시를 위한 ref - 학년/학기별 데이터 저장
+  const cachedData = useRef({});
   const [availableGrades, setAvailableGrades] = useState(['1', '2', '3']);
   const [availableSemesters, setAvailableSemesters] = useState(['1학기', '2학기']);
   const [availableSubjects, setAvailableSubjects] = useState(['all', '국어', '수학', '영어', '과학', '사회', '음악', '미술', '체육']);
 
-  // 데이터 가져오는 함수 - useCallback으로 감싸서 메모이제이션
+  // 학생 성적 데이터 가져오기 - 의존성 배열 문제 해결
   const fetchStudentGradeData = useCallback(async () => {
-    // URL에서 가져온 ID가 있으면 그것을 사용, 없으면 student 객체의 studentId 사용
-    if (!studentUrlId && (!student || !student.studentId)) return;
-    
     setIsLoading(true);
     setError(null);
     
     try {
-      // URL에서 가져온 ID를 우선적으로 사용
-      const idToUse = studentUrlId || student.studentId;
-      console.log(`학생 ID: ${idToUse}, 학년: ${selectedGrade}, 학기: ${selectedSemester.replace('학기', '')}`);
-      console.log('성적 데이터 API 호출 중...');
+      const idToUse = studentUrlId || (student && student.studentId);
+      if (!idToUse) {
+        throw new Error('학생 ID를 찾을 수 없습니다.');
+      }
       
-      // gradeApi의 getStudentGradeOverview로 데이터 가져오기
-      const data = await getStudentGradeOverview(
-        idToUse, // URL에서 가져온 ID를 우선적으로 사용
-        selectedGrade,
-        selectedSemester.replace('학기', '') // '학기' 부분 제거
-      );
+      // 함수 내부에서 최신 상태값 직접 참조
+      const currentGrade = selectedGrade;
+      const currentSemester = selectedSemester;
       
-      if (data && Object.keys(data).length > 0) {
+      console.log(`성적 데이터 가져오기: 학생ID=${idToUse}, 학년=${currentGrade}, 학기=${currentSemester}`);
+      
+      // 학기 값에서 '학기' 제거
+      const semesterValue = currentSemester.replace('학기', '');
+      
+      // API 호출
+      const data = await getStudentGradeOverview(idToUse, currentGrade, semesterValue);
+      console.log('가져온 성적 데이터:', data);
+      
+      if (data && data.subjects && data.subjects.length > 0) {
         console.log('API에서 성적 데이터 수신 성공:', data);
-        setGradeData(data);
+        
+        // 데이터 구조 확인 및 디버깅
+        console.log('데이터 구조 확인:', {
+          subjects: data.subjects,
+          totals: data.totals,
+          finalSummary: data.finalSummary,
+          radarChart: data.radarChart
+        });
+        
+        // ScoreTable 컴포넌트에 맞게 데이터 구조 변환
+        const processedSubjects = data.subjects.map(subject => ({
+          name: subject.name,
+          credits: subject.credits || 1,
+          midterm: subject.midterm || 0,
+          final: subject.final || 0,
+          performance: subject.performance || 0,
+          totalScore: (subject.midterm || 0) + (subject.final || 0) + (subject.performance || 0),
+          rank: subject.rank || '1',
+          gradeLevel: subject.gradeLevel || 'A'
+        }));
+        
+        // 총합 점수 계산
+        const totalCredits = processedSubjects.reduce((sum, subject) => sum + subject.credits, 0);
+        const sumMidterm = processedSubjects.reduce((sum, subject) => sum + subject.midterm, 0);
+        const sumFinal = processedSubjects.reduce((sum, subject) => sum + subject.final, 0);
+        const sumPerformance = processedSubjects.reduce((sum, subject) => sum + subject.performance, 0);
+        const sumTotalScore = sumMidterm + sumFinal + sumPerformance;
+        
+        // totals 데이터 구성
+        const totals = {
+          totalCredits,
+          sumMidterm,
+          sumFinal,
+          sumPerformance,
+          sumTotalScore
+        };
+        
+        // finalSummary 데이터 구성
+        const finalSummary = {
+          totalStudents: 30,
+          finalRank: '1',
+          finalConvertedGrade: 'A'
+        };
+        
+        // radarChart 데이터 구성
+        const radarChart = {
+          labels: processedSubjects.map(subject => subject.name),
+          data: processedSubjects.map(subject => subject.totalScore / 3)
+        };
+        
+        // 최종 데이터 구성
+        const processedData = {
+          subjects: processedSubjects,
+          totals,
+          finalSummary,
+          radarChart
+        };
+        
+        console.log('변환된 데이터:', processedData);
+        setGradeData(processedData);
         
         // 과목 목록 업데이트
-        if (data.subjects && data.subjects.length > 0) {
-          const subjects = data.subjects.map(subject => subject.name);
-          setAvailableSubjects(['all', ...subjects]);
-        }
+        const subjectNames = processedSubjects.map(subject => subject.name);
+        setAvailableSubjects(['all', ...subjectNames]);
       } else {
-        console.log('API에서 데이터가 없어 더미 데이터 사용');
-        // API에서 데이터가 없거나 빈 객체를 반환한 경우 더미 데이터 사용
-        const dummyData = getDummyGradeData(idToUse, selectedGrade, selectedSemester);
-        setGradeData(dummyData);
-        
-        // 더미 데이터의 과목 목록 업데이트
-        if (dummyData && dummyData.subjects && dummyData.subjects.length > 0) {
-          const subjects = dummyData.subjects.map(subject => subject.name);
-          setAvailableSubjects(['all', ...subjects]);
-        }
+        console.log('API에서 데이터가 없습니다');
+        setGradeData(null);
+        setError('해당 학년 학기에 성적 데이터가 없습니다.');
       }
       
       setIsLoading(false);
     } catch (err) {
-      console.error('Error fetching student grade data:', err);
-      // URL에서 가져온 ID를 우선적으로 사용
-      const idToUse = studentUrlId || student.studentId;
-      // API 호출 실패 시 더미 데이터 사용
-      const dummyData = getDummyGradeData(idToUse, selectedGrade, selectedSemester);
-      setGradeData(dummyData);
+      console.error('Error fetching grade data:', err);
+      setError('성적 데이터를 가져오는 중 오류가 발생했습니다.');
+      setGradeData(null);
+      setIsLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student, studentUrlId, selectedGrade, selectedSemester, setAvailableSubjects]); // ESLint 경고 해결을 위해 의존성 추가
+
+  // 필터 변경 시 데이터 가져오기 - 사용자 액션에 의한 변경일 때만 실행
+  const [isUserAction, setIsUserAction] = useState(false);
+  
+  // 디바운싱을 위한 타이머 ID
+  const timerRef = useRef(null);
+  
+  useEffect(() => {
+    // 사용자 액션에 의한 변경일 때만 실행
+    if (student && student.id && isUserAction) {
+      console.log(`사용자 액션에 의한 변경: 학년=${selectedGrade}, 학기=${selectedSemester}`);
       
-      // 더미 데이터의 과목 목록 업데이트
-      if (dummyData && dummyData.subjects && dummyData.subjects.length > 0) {
-        const subjects = dummyData.subjects.map(subject => subject.name);
-        setAvailableSubjects(['all', ...subjects]);
+      // 이전 타이머 취소
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+      
+      // 300ms 디바운싱 적용 - 연속적인 상태 변경에 대해 한 번만 API 호출
+      timerRef.current = setTimeout(() => {
+        fetchStudentGradeData();
+        setIsUserAction(false); // 액션 처리 후 초기화
+      }, 300);
+    }
+    
+    // 컴포넌트 언마운트 시 타이머 정리
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student, isUserAction, fetchStudentGradeData, selectedGrade, selectedSemester]); // ESLint 경고 해결을 위해 의존성 추가
+  
+  // 학생의 성적 입력 상태 확인 및 가용한 학년/학기 데이터 가져오기
+  const fetchAvailableGradeData = useCallback(async (shouldSetInitialValues = true) => {
+    if (!studentUrlId && (!student || !student.studentId)) return;
+    
+    try {
+      // 모든 학년과 학기 조합에 대해 성적 데이터 확인
+      const availableGradeData = [];
+      const idToUse = studentUrlId || student.studentId;
+      
+      for (const grade of availableGrades) {
+        for (const semester of availableSemesters) {
+          try {
+            const semesterValue = semester.replace('학기', '');
+            const data = await getStudentGradeOverview(idToUse, grade, semesterValue);
+            
+            // 성적 데이터가 있고 모든 과목에 점수가 입력되어 있는지 확인
+            if (data && data.subjects && data.subjects.length > 0) {
+              const allSubjectsComplete = data.subjects.every(subject => 
+                subject.midterm !== undefined && 
+                subject.final !== undefined && 
+                subject.performance !== undefined
+              );
+              
+              if (allSubjectsComplete) {
+                availableGradeData.push({
+                  grade,
+                  semester: semesterValue,
+                  status: '입력완료'
+                });
+              }
+            }
+          } catch (error) {
+            // 특정 학년/학기 조합에 대한 오류는 무시하고 계속 진행
+            console.error(`Error checking grade data for ${grade}-${semester}:`, error);
+          }
+        }
+      }
+      
+      console.log('사용 가능한 성적 데이터:', availableGradeData);
+      
+      // 초기 로딩 시에만 값을 설정하고, 드롭다운 변경 시에는 설정하지 않음
+      if (shouldSetInitialValues && availableGradeData.length > 0) {
+        const firstData = availableGradeData[0];
+        setSelectedGrade(firstData.grade);
+        setSelectedSemester(`${firstData.semester}학기`);
+        // 직접 fetchStudentGradeData 호출 대신 isUserAction 플래그 설정
+        // 이렇게 하면 다른 useEffect에서 한 번만 API를 호출함
+        setIsUserAction(true);
+      }
+    } catch (error) {
+      console.error('Error fetching available grade data:', error);
+    }
+  }, [studentUrlId, student, availableGrades, availableSemesters, setIsUserAction]); // fetchStudentGradeData 제거, setIsUserAction 추가
+  
+  // 모든 학년/학기 데이터를 가져와서 캐시에 저장하는 함수
+  const fetchAllGradeData = useCallback(async () => {
+    if (!studentUrlId && (!student || !student.studentId)) return;
+    
+    const idToUse = studentUrlId || student.studentId;
+    console.log('모든 학년/학기 데이터 가져오기 시작:', idToUse);
+    
+    setIsLoading(true);
+    
+    try {
+      // 모든 학년과 학기 조합에 대해 성적 데이터 가져오기
+      for (const grade of availableGrades) {
+        for (const semester of availableSemesters) {
+          const semesterValue = semester.replace('학기', '');
+          const cacheKey = `${grade}-${semesterValue}`;
+          
+          // 이미 캐시에 있는 데이터는 건너뛰기
+          if (cachedData.current[cacheKey]) continue;
+          
+          try {
+            console.log(`학년 ${grade}, 학기 ${semesterValue} 데이터 가져오기...`);
+            const data = await getStudentGradeOverview(idToUse, grade, semesterValue);
+            
+            if (data && data.subjects && data.subjects.length > 0) {
+              // 데이터 가공 처리
+              const processedData = processGradeData(data);
+              
+              // 캐시에 저장
+              cachedData.current[cacheKey] = processedData;
+              console.log(`학년 ${grade}, 학기 ${semesterValue} 데이터 캐싱 완료`);
+              
+              // 과목 목록 업데이트
+              if (grade === selectedGrade && semester === selectedSemester) {
+                const subjectNames = processedData.subjects.map(subject => subject.name);
+                setAvailableSubjects(['all', ...subjectNames]);
+                setGradeData(processedData);
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching grade data for ${grade}-${semester}:`, error);
+          }
+        }
+      }
+      
+      // 전체 캐싱 완료 후 현재 선택된 학년/학기 데이터 표시
+      const currentKey = `${selectedGrade}-${selectedSemester.replace('학기', '')}`;
+      if (cachedData.current[currentKey]) {
+        setGradeData(cachedData.current[currentKey]);
+        const subjectNames = cachedData.current[currentKey].subjects.map(subject => subject.name);
+        setAvailableSubjects(['all', ...subjectNames]);
       }
       
       setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching all grade data:', error);
+      setIsLoading(false);
     }
-  }, [student, studentUrlId, selectedGrade, selectedSemester]);
-
-  // 필터 변경 시 데이터 가져오기
-  useEffect(() => {
-    if (student && student.id) {
-      fetchStudentGradeData();
-    }
-  }, [student, selectedGrade, selectedSemester, fetchStudentGradeData]); // 필터 변경 시 리렌더링
+  }, [availableGrades, availableSemesters, selectedGrade, selectedSemester, student, studentUrlId]);
   
-  // 컴포넌트 마운트 시 성적 데이터 가져오기
-  useEffect(() => {
-    // URL에서 가져온 ID가 있으면 그것을 사용, 없으면 student 객체의 studentId 필요
-    if (studentUrlId || (student && student.studentId)) {
-      console.log('ScoreTab 컴포넌트 마운트 시 데이터 가져오기 시도:', { studentUrlId, studentId: student?.studentId });
-      fetchStudentGradeData();
+  // 데이터 가공 처리 함수 - API 응답 데이터 최대한 활용
+  const processGradeData = useCallback((data) => {
+    console.log('원본 API 데이터 확인:', data);
+    
+    // ScoreTable 컴포넌트에 맞게 데이터 구조 변환
+    const processedSubjects = data.subjects.map(subject => ({
+      name: subject.name,
+      credits: subject.credits || 1,
+      midterm: subject.midterm || 0,
+      final: subject.final || 0,
+      performance: subject.performance || 0,
+      totalScore: (subject.midterm || 0) + (subject.final || 0) + (subject.performance || 0),
+      // API에서 석차와 등급 정보가 있으면 사용
+      rank: subject.rank || '1',
+      gradeLevel: subject.gradeLevel || 'A'
+    }));
+    
+    // 총합 점수 계산
+    const totalCredits = processedSubjects.reduce((sum, subject) => sum + subject.credits, 0);
+    const sumMidterm = processedSubjects.reduce((sum, subject) => sum + subject.midterm, 0);
+    const sumFinal = processedSubjects.reduce((sum, subject) => sum + subject.final, 0);
+    const sumPerformance = processedSubjects.reduce((sum, subject) => sum + subject.performance, 0);
+    const sumTotalScore = sumMidterm + sumFinal + sumPerformance;
+    
+    // totals 데이터 구성 - API에서 제공하는 경우 사용
+    const totals = data.totals || {
+      totalCredits,
+      sumMidterm,
+      sumFinal,
+      sumPerformance,
+      sumTotalScore
+    };
+    
+    // finalSummary 데이터 구성 - API에서 제공하는 경우 사용
+    const finalSummary = {};
+    
+    // 학년 총 인원
+    if (data.finalSummary && data.finalSummary.totalStudents) {
+      finalSummary.totalStudents = data.finalSummary.totalStudents;
+    } else if (data.classInfo && data.classInfo.totalStudents) {
+      finalSummary.totalStudents = data.classInfo.totalStudents;
+    } else {
+      finalSummary.totalStudents = 30; // 기본값
     }
-  }, [studentUrlId, student, fetchStudentGradeData]); // studentUrlId, student와 fetchStudentGradeData 의존성 추가
+    
+    // 해당 학생의 석차
+    if (data.finalSummary && data.finalSummary.finalRank) {
+      finalSummary.finalRank = data.finalSummary.finalRank;
+    } else if (data.finalSummary && data.finalSummary.rank) {
+      finalSummary.finalRank = data.finalSummary.rank;
+    } else if (data.studentRank) {
+      finalSummary.finalRank = data.studentRank;
+    } else {
+      finalSummary.finalRank = '1/30'; // 기본값
+    }
+    
+    // 최종 등급
+    if (data.finalSummary && data.finalSummary.finalConvertedGrade !== undefined) {
+      finalSummary.finalConvertedGrade = data.finalSummary.finalConvertedGrade;
+    } else if (data.finalSummary && data.finalSummary.grade !== undefined) {
+      finalSummary.finalConvertedGrade = data.finalSummary.grade;
+    } else if (data.studentGrade !== undefined) {
+      finalSummary.finalConvertedGrade = data.studentGrade;
+    } else {
+      finalSummary.finalConvertedGrade = 4.5; // 기본값
+    }
+    
+    // radarChart 데이터 구성 - API에서 제공하는 경우 사용
+    const radarChart = data.radarChart || {
+      labels: processedSubjects.map(subject => subject.name),
+      data: processedSubjects.map(subject => subject.totalScore / 3)
+    };
+    
+    // 최종 데이터 구성
+    const processedData = {
+      subjects: processedSubjects,
+      totals,
+      finalSummary,
+      radarChart
+    };
+    
+    console.log('가공된 데이터:', processedData);
+    return processedData;
+  }, []);
+  
+  // 컴포넌트 마운트 시 성적 데이터 가져오기 - 모든 학년/학기 데이터 가져오기
+  useEffect(() => {
+    // 이미 데이터가 로드되었는지 확인
+    if ((studentUrlId || (student && student.studentId)) && !dataLoaded.current) {
+      console.log('ScoreTab 컴포넌트 마운트 시 초기 데이터 가져오기:', { studentUrlId, studentId: student?.studentId });
+      
+      // 초기 로드 플래그 설정
+      dataLoaded.current = true;
+      
+      // 1학년 1학기로 값 설정
+      setSelectedGrade('1');
+      setSelectedSemester('1학기');
+      
+      // 비동기 함수 호출을 위해 setTimeout 사용
+      setTimeout(() => {
+        console.log('모든 학년/학기 데이터 가져오기');
+        // 모든 학년/학기 데이터 가져오기
+        fetchAllGradeData();
+      }, 0);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentUrlId, student]); // 의존성 수정
   
   // forceLoad prop이 변경될 때 데이터 다시 가져오기 (탭 클릭 시)
+  // 이 useEffect는 탭이 처음 로드될 때만 실행되도록 수정
   useEffect(() => {
     // URL에서 가져온 ID가 있으면 그것을 사용, 없으면 student 객체의 studentId 필요
-    if (studentUrlId || (student && student.studentId)) {
-      console.log('forceLoad useEffect 호출:', { forceLoad, studentUrlId, studentId: student?.studentId });
+    if ((studentUrlId || (student && student.studentId)) && !dataLoaded.current) {
+      console.log('ScoreTab 초기 로드 시 데이터 가져오기');
       
-      // forceLoad가 true이거나 false에 상관없이 항상 API 호출
-      console.log('ScoreTab이 활성화되어 데이터를 다시 가져옵니다.');
+      // 초기 로드 플래그 설정
+      dataLoaded.current = true;
+      
       // 비동기 함수 호출을 위해 setTimeout 사용
       setTimeout(() => {
         console.log('성적 데이터 가져오기 시작...');
-        fetchStudentGradeData();
+        fetchAvailableGradeData(true); // 초기 로드시에만 초기값 설정
       }, 0);
     }
-  }, [forceLoad, studentUrlId, student, fetchStudentGradeData]);
+  }, [studentUrlId, student, fetchAvailableGradeData]);
   
-  // 더미 데이터 가져오기 함수
-  const getDummyGradeData = (studentId, grade, semester) => {
-    console.log('Getting dummy data for student:', studentId, grade, semester);
-    
-    // 학생 ID와 더미 데이터 키 매핑
-    // 예: 20250001 -> 1, 20250002 -> 2 등
-    let dummyId = 1; // 기본값은 1
-    
-    if (studentId) {
-      // URL에서 가져온 ID 또는 student.studentId 사용
-      const idToUse = studentId;
-      
-      // 학생 ID에서 마지막 숫자 추출
-      const lastDigits = idToUse.toString().slice(-1);
-      const numericId = parseInt(lastDigits, 10);
-      
-      // 유효한 숫자이고 dummyStudentScoreData에 해당 키가 있으면 사용
-      if (!isNaN(numericId) && numericId > 0 && dummyStudentScoreData[numericId]) {
-        dummyId = numericId;
-      }
-    }
-    
-    console.log('Using dummy ID:', dummyId);
-    
-    // 더미 데이터에서 매핑된 ID에 해당하는 데이터 찾기
-    const studentData = dummyStudentScoreData[dummyId];
-    
-    if (!studentData) {
-      console.log('No dummy data found for ID:', dummyId);
-      return null;
-    }
-    
-    // 학년과 학기에 맞는 데이터 찾기
-    const semesterValue = semester.replace('학기', '');
-    const gradeData = studentData.find(data => 
-      data.grade === `${grade}학년` && data.semester === semester
-    );
-    
-    // 해당 학년/학기 데이터가 없으면 첫 번째 데이터 사용
-    const finalData = gradeData || studentData[0];
-    
-    if (!finalData) {
-      console.log('No grade data found for grade/semester:', grade, semester);
-      return null;
-    }
-    
-    console.log('Found dummy data:', finalData);
-    
-    // 레이더 차트를 위한 데이터 처리
-    const subjects = finalData.scores.map(score => score.subject);
-    const radarData = finalData.scores.map(score => score.total);
-    
-    // API 응답 형식에 맞게 데이터 변환
-    return {
-      studentId: studentUrlId || student.studentId || studentId,
-      studentName: student.name || '홍길동',
-      grade: grade || '1',
-      classNumber: student.classNumber || '7',
-      number: student.number || '1',
-      subjects: finalData.scores.map(score => ({
-        name: score.subject,
-        credits: score.unit,
-        midterm: score.midterm,
-        final: score.final,
-        performance: score.task,
-        totalScore: score.total,
-        rank: score.rank,
-        gradeLevel: score.grade
-      })),
-      totals: {
-        totalCredits: finalData.scores.reduce((sum, score) => sum + score.unit, 0),
-        sumMidterm: finalData.scores.reduce((sum, score) => sum + score.midterm, 0) / finalData.scores.length,
-        sumFinal: finalData.scores.reduce((sum, score) => sum + score.final, 0) / finalData.scores.length,
-        sumPerformance: finalData.scores.reduce((sum, score) => sum + score.task, 0) / finalData.scores.length,
-        sumTotalScore: finalData.scores.reduce((sum, score) => sum + score.total, 0) / finalData.scores.length
-      },
-      finalSummary: {
-        totalStudents: 30,
-        finalRank: finalData.rank || '??',
-        finalConvertedGrade: finalData.grade || '??'
-      },
-      radarChart: {
-        labels: subjects,
-        data: radarData
-      }
-    };
-  };
-
   // Loading state component
   const LoadingMessage = () => (
     <NoDataContainer>
@@ -294,21 +496,59 @@ const ScoreTab = ({ student, studentUrlId, forceLoad = false }) => {
 
   if (!student) return null;
 
-  // 학년/학기/과목 변경 핸들러
+  // 학년/학기/과목 변경 핸들러 - 캐시된 데이터 사용
   const handleGradeChange = (e) => {
-    setSelectedGrade(e.target.value);
+    const newGrade = e.target.value;
+    console.log(`학년 변경: ${newGrade}`);
+    setSelectedGrade(newGrade);
     // 학년 변경 시 과목 필터 초기화
     setSelectedSubject('all');
+    
+    // 캐시에서 데이터 가져오기
+    const cacheKey = `${newGrade}-${selectedSemester.replace('학기', '')}`;
+    if (cachedData.current[cacheKey]) {
+      console.log(`캐시에서 ${cacheKey} 데이터 가져오기`);
+      setGradeData(cachedData.current[cacheKey]);
+      
+      // 과목 목록 업데이트
+      const subjectNames = cachedData.current[cacheKey].subjects.map(subject => subject.name);
+      setAvailableSubjects(['all', ...subjectNames]);
+    } else {
+      console.log(`${cacheKey} 데이터가 캐시에 없음, API 호출 필요`);
+      // 캐시에 없는 경우에만 API 호출
+      setIsUserAction(true);
+    }
   };
   
   const handleSemesterChange = (e) => {
-    setSelectedSemester(e.target.value);
+    const newSemester = e.target.value;
+    console.log(`학기 변경: ${newSemester}`);
+    setSelectedSemester(newSemester);
     // 학기 변경 시 과목 필터 초기화
     setSelectedSubject('all');
+    
+    // 캐시에서 데이터 가져오기
+    const semesterValue = newSemester.replace('학기', '');
+    const cacheKey = `${selectedGrade}-${semesterValue}`;
+    if (cachedData.current[cacheKey]) {
+      console.log(`캐시에서 ${cacheKey} 데이터 가져오기`);
+      setGradeData(cachedData.current[cacheKey]);
+      
+      // 과목 목록 업데이트
+      const subjectNames = cachedData.current[cacheKey].subjects.map(subject => subject.name);
+      setAvailableSubjects(['all', ...subjectNames]);
+    } else {
+      console.log(`${cacheKey} 데이터가 캐시에 없음, API 호출 필요`);
+      // 캐시에 없는 경우에만 API 호출
+      setIsUserAction(true);
+    }
   };
   
   const handleSubjectChange = (e) => {
-    setSelectedSubject(e.target.value);
+    const newSubject = e.target.value;
+    console.log(`과목 변경: ${newSubject}`);
+    setSelectedSubject(newSubject);
+    // 과목 변경은 서버 호출이 필요없으로 플래그 설정 안함
   };
   
   // URL에서 가져온 ID 또는 student 객체가 없으면 오류 메시지 표시

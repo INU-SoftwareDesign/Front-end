@@ -58,13 +58,17 @@ const GradeManagementPage = () => {
   const currentUser = useUserStore(state => state.currentUser);
   const userRole = currentUser?.role || "teacher"; // Default to teacher for testing
   
+  // 현재 유저의 학년/반 정보 추출
+  const userGrade = currentUser?.grade;
+  const userClassNumber = currentUser?.classNumber;
+  
   const [students, setStudents] = useState([]);
   const [semesterPeriod, setSemesterPeriod] = useState({ start: '', end: '' });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState({
-    grade: "1",
-    classNumber: "7",
+    grade: userGrade,
+    classNumber: userClassNumber,
     semester: "1"
   });
 
@@ -81,7 +85,24 @@ const GradeManagementPage = () => {
           filter.semester
         );
         
-        setStudents(data.students || []);
+        // 현재 로그인한 교사의 학급 학생들만 필터링
+        let filteredStudents = data.students || [];
+        
+        // 현재 교사의 학년/반과 일치하는 학생들만 필터링
+        if (userRole === 'teacher') {
+          filteredStudents = filteredStudents.filter(student => 
+            student.grade === userGrade && 
+            student.classNumber === userClassNumber
+          );
+        }
+        
+        // 학생 번호 순으로 정렬
+        filteredStudents.sort((a, b) => {
+          // 문자열이 아닌 숫자로 변환하여 정렬
+          return parseInt(a.number) - parseInt(b.number);
+        });
+        
+        setStudents(filteredStudents);
         setSemesterPeriod(data.semesterPeriod || { start: '', end: '' });
         setIsLoading(false);
       } catch (error) {
@@ -106,8 +127,8 @@ const GradeManagementPage = () => {
     <PageContainer>
       <GradeFilterBar
         userRole={userRole}
-        userGrade={filter.grade}
-        userClass={`${filter.classNumber}반`}
+        userGrade={userGrade}
+        userClassNumber={userClassNumber}
         onFilterChange={handleFilterChange}
       />
       

@@ -1,26 +1,41 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import { gradeInputPeriod } from "../../data/dummyGradeData";
+import { getGradeInputPeriod } from "../../api/gradeApi";
 
 const GradeFilterBar = ({
   userRole,
   userGrade,
-  userClass,
+  userClassNumber,
   onFilterChange,
 }) => {
   const [search, setSearch] = useState("");
   const [selectedSemester, setSelectedSemester] = useState("1학기");
+  const [gradeInputPeriodData, setGradeInputPeriodData] = useState({
+    isActive: false,
+    start: '',
+    end: ''
+  });
   
-  // Fixed values from teacher's information
-  // 학년과 반 텍스트 형식화
+  // 학년과 반 텍스트 형식화 - 현재 유저 정보 사용
   const gradeText = userGrade ? `${userGrade}학년` : "1학년";
-  const classText = userClass || "7반";
+  const classText = userClassNumber ? `${userClassNumber}반` : "7반";
 
-  // 초기 렌더링 시에만 필터 업데이트
+  // 초기 렌더링 시 성적 입력 기간 정보 가져오기 및 필터 업데이트
   useEffect(() => {
+    const fetchGradeInputPeriod = async () => {
+      try {
+        const periodData = await getGradeInputPeriod();
+        setGradeInputPeriodData(periodData);
+      } catch (error) {
+        console.error('Failed to fetch grade input period:', error);
+      }
+    };
+    
+    fetchGradeInputPeriod();
+    
     // 학년과 반 번호만 추출하여 전달
     const gradeNumber = userGrade || "1";
-    const classNumber = userClass ? userClass.replace(/반$/, "") : "7";
+    const classNumber = userClassNumber || "7";
     
     onFilterChange({
       search,
@@ -45,7 +60,7 @@ const GradeFilterBar = ({
   // 필터 업데이트 함수
   const updateFilter = (searchValue, semesterValue) => {
     const gradeNumber = userGrade || "1";
-    const classNumber = userClass ? userClass.replace(/반$/, "") : "7";
+    const classNumber = userClassNumber || "7";
     
     onFilterChange({
       search: searchValue,
@@ -76,9 +91,9 @@ const GradeFilterBar = ({
         </Dropdown>
       </LeftSection>
       <RightSection>
-        <PeriodInfo isActive={gradeInputPeriod.isActive}>
-          성적 입력 기간: {gradeInputPeriod.start} ~ {gradeInputPeriod.end}
-          {!gradeInputPeriod.isActive && (
+        <PeriodInfo isActive={gradeInputPeriodData.isActive}>
+          성적 입력 기간: {gradeInputPeriodData.start} ~ {gradeInputPeriodData.end}
+          {!gradeInputPeriodData.isActive && (
             <ExpiredLabel>기간 만료</ExpiredLabel>
           )}
         </PeriodInfo>

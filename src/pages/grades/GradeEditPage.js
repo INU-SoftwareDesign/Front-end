@@ -451,8 +451,8 @@ const GradeEditPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Find student by ID
-  const student = dummyGradeData.students.find(
+  // Find student by ID (dummyGradeData is an array, not an object with students property)
+  const student = dummyGradeData.find(
     (student) => student.id === parseInt(id)
   );
 
@@ -491,15 +491,29 @@ const GradeEditPage = () => {
         const periodData = await getGradeInputPeriod();
         setGradeInputPeriod(periodData);
         
-        // Fetch student grades if student exists
-        if (student) {
+        // Fetch student grades if ID exists
+        if (id) {
+          // 학생 정보가 없는 경우를 대비하여 안전하게 처리
+          const studentGrade = student ? student.grade : '1'; // 학생 정보가 없으면 기본값 사용
+          const semesterValue = semester.replace('학기', '');
+          
+          // POST 요청에 맞게 구조화된 데이터 생성
+          const gradeRequestData = {
+            grade: studentGrade,
+            semester: semesterValue,
+            gradeStatus: '미입력',
+            updatedAt: new Date().toISOString(),
+            subjects: []
+          };
+          
           const gradeData = await getStudentGrades(
             id, 
-            student.grade, 
-            semester.replace('학기', '')
+            studentGrade, 
+            semesterValue,
+            gradeRequestData
           );
           
-          if (gradeData.subjects && gradeData.subjects.length > 0) {
+          if (gradeData && gradeData.subjects && gradeData.subjects.length > 0) {
             // Map API data to component state format
             const mappedSubjects = gradeData.subjects.map((subject, index) => ({
               id: index + 1,

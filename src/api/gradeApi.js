@@ -186,14 +186,37 @@ export const getGradeManagementStatus = async (grade, classNum, semester) => {
 export const getGradeInputPeriod = async () => {
   try {
     const response = await apiClient.get('/grades/input-period');
+    
+    // API에서 반환하는 형식이 {semesterPeriod: {start, end}} 형태이므로 처리
+    if (response.data && response.data.semesterPeriod) {
+      const { start, end } = response.data.semesterPeriod;
+      
+      // 현재 날짜가 기간 내에 있는지 확인
+      const now = new Date();
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      const isActive = now >= startDate && now <= endDate;
+      
+      return {
+        isActive,
+        start,
+        end
+      };
+    }
+    
     return response.data;
   } catch (error) {
     console.warn('API call failed, using dummy data:', error);
-    // Return dummy period data
+    // Return dummy period data with current date check
+    const now = new Date();
+    const startDate = new Date('2025-05-01');
+    const endDate = new Date('2025-06-16');
+    const isActive = now >= startDate && now <= endDate;
+    
     return {
-      isActive: true,
+      isActive,
       start: '2025-05-01',
-      end: '2025-05-15'
+      end: '2025-06-16'
     };
   }
 };
@@ -203,13 +226,21 @@ export const getGradeInputPeriod = async () => {
  * @param {string} studentId - The student ID
  * @param {string} grade - The grade level
  * @param {string} semester - The semester
+ * @param {Object} gradeData - The grade data to submit
  * @returns {Promise<Object>} Student grade data
  */
-export const getStudentGrades = async (studentId, grade, semester) => {
+export const getStudentGrades = async (studentId, grade, semester, gradeData = null) => {
   try {
-    const response = await apiClient.get(`/grades/students/${studentId}`, {
-      params: { grade, semester }
-    });
+    // POST 요청으로 변경하고 요청 본문 추가
+    const requestBody = gradeData || {
+      grade,
+      semester,
+      gradeStatus: '미입력',
+      updatedAt: new Date().toISOString(),
+      subjects: []
+    };
+    
+    const response = await apiClient.post(`/grades/students/${studentId}`, requestBody);
     return response.data;
   } catch (error) {
     console.warn('API call failed, using dummy data:', error);

@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaBell, FaUser, FaCaretDown, FaSignOutAlt, FaCog, FaUserCircle } from 'react-icons/fa';
 import useUserStore from '../../stores/useUserStore';
-import { logoutUser } from '../../api/userApi';
+import { logoutUser, getCurrentUser } from '../../api/userApi';
 import logoImage from '../../assets/logo/soseol_logo.png';
 
 const NavContainer = styled.nav`
@@ -382,6 +382,7 @@ const Navbar = ({ userName, profileName, profileDetail, userRole }) => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [userDetails, setUserDetails] = useState(null);
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
   
@@ -416,6 +417,22 @@ const Navbar = ({ userName, profileName, profileDetail, userRole }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+  
+  // 사용자 정보 가져오기
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      if (currentUser && currentUser.id) {
+        try {
+          const userData = await getCurrentUser();
+          setUserDetails(userData);
+        } catch (error) {
+          console.error('사용자 정보 가져오기 실패:', error);
+        }
+      }
+    };
+    
+    fetchUserDetails();
+  }, [currentUser]);  // currentUser가 변경될 때만 실행
   
   // Handle logout confirmation
   const handleLogout = async () => {
@@ -527,6 +544,11 @@ const Navbar = ({ userName, profileName, profileDetail, userRole }) => {
                 <ProfileDetail>{displayProfileDetail}</ProfileDetail>
                 {currentUser && currentUser.id && (
                   <ProfileDetail>ID: {currentUser.id}</ProfileDetail>
+                )}
+                {userDetails && userDetails.role === 'teacher' && userDetails.grade && userDetails.classNumber && (
+                  <ProfileDetail>
+                    담임: {userDetails.grade}학년 {userDetails.classNumber}반
+                  </ProfileDetail>
                 )}
               </ProfileInfo>
             </ProfileHeader>

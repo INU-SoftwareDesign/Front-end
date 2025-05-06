@@ -77,10 +77,19 @@ const StudentRecordPage = () => {
   useEffect(() => {
     if (currentUser && userRole === 'teacher') {
       // Set the grade and class filters based on the teacher's assigned class
-      setGrade(currentUser.gradeLevel);
-      setClass(currentUser.classNumber);
+      // API에서 반환하는 필드명(grade, classNumber) 사용
+      if (currentUser.grade && currentUser.classNumber) {
+        console.log('교사 정보 설정:', currentUser.grade, currentUser.classNumber);
+        setGrade(String(currentUser.grade));
+        setClass(String(currentUser.classNumber));
+      } else if (currentUser.gradeLevel && currentUser.classNumber) {
+        // 이전 필드명 호환성 유지
+        console.log('교사 정보 설정(이전 필드명):', currentUser.gradeLevel, currentUser.classNumber);
+        setGrade(String(currentUser.gradeLevel));
+        setClass(String(currentUser.classNumber));
+      }
     }
-  }, [currentUser, userRole]);
+  }, [currentUser, userRole, setGrade, setClass]);
   
   // Fetch students when filters change
   useEffect(() => {
@@ -103,8 +112,13 @@ const StudentRecordPage = () => {
     
     if (userRole === 'teacher') {
       // Teachers can only access students in their homeroom class
-      // Use gradeLevel and classNumber from UserContext structure
-      return currentUser.gradeLevel === student.grade && currentUser.classNumber === student.classNumber;
+      // API 응답 구조에 맞게 필드명 수정 (grade, classNumber)
+      const teacherGrade = currentUser.grade || currentUser.gradeLevel;
+      const teacherClass = currentUser.classNumber;
+      
+      // 타입 일치를 위해 문자열로 변환하여 비교
+      return String(teacherGrade) === String(student.grade) && 
+             String(teacherClass) === String(student.classNumber);
     }
     
     if (userRole === 'student') {

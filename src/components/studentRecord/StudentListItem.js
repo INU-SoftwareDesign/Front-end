@@ -76,7 +76,13 @@ const StudentListItem = ({ student, index, canAccess: propCanAccess }) => {
     
     if (currentUser.role === 'teacher') {
       // Teachers can only access students in their homeroom class
-      return currentUser.gradeLevel === student.grade && currentUser.classNumber === student.classNumber;
+      // API 응답 구조에 맞게 필드명 수정 (grade, classNumber)
+      const teacherGrade = currentUser.grade || currentUser.gradeLevel;
+      const teacherClass = currentUser.classNumber;
+      
+      // 타입 일치를 위해 문자열로 변환하여 비교
+      return String(teacherGrade) === String(student.grade) && 
+             String(teacherClass) === String(student.classNumber);
     }
     
     if (currentUser.role === 'student') {

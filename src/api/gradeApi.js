@@ -4,18 +4,42 @@ import apiClient from './apiClient';
  * Grade API functions for managing student grades
  */
 
-
+/**
+ * Utility function to process student ID
+ * @param {string} studentId - The raw student ID (e.g., '20250001')
+ * @returns {string} - Processed student ID (e.g., '1')
+ */
+const processStudentId = (studentId) => {
+  if (!studentId) return studentId;
+  
+  // 학생 ID에서 뒤의 숫자 4개를 추출
+  let processedId = studentId;
+  
+  // 학생 ID가 최소 4자리 이상인 경우
+  if (studentId.length >= 4) {
+    processedId = studentId.slice(-4); // 뒤에서 4개의 문자만 추출
+  }
+  
+  // 앞에 0이 붙어있으면 제거 (e.g., '0001' -> '1')
+  processedId = processedId.replace(/^0+/, '');
+  
+  console.log(`원본 studentId: ${studentId}, 변환된 studentId: ${processedId}`);
+  return processedId;
+};
 
 /**
  * Get student grade overview
- * @param {string} studentId - The student ID
+ * @param {string} studentId - The student ID (e.g., '20250001')
  * @param {string} grade - The grade level
  * @param {string} semester - The semester
  * @returns {Promise} - Promise with student grade overview
  */
 export const getStudentGradeOverview = async (studentId, grade, semester) => {
   try {
-    const response = await apiClient.get(`/grades/students/${studentId}/overview`, {
+    // 학생 ID 처리
+    const processedId = processStudentId(studentId);
+    
+    const response = await apiClient.get(`/grades/students/${processedId}/overview`, {
       params: { grade, semester }
     });
     return response.data;
@@ -127,7 +151,7 @@ export const getGradeInputPeriod = async () => {
 
 /**
  * Get grades for a specific student
- * @param {string} studentId - The student ID
+ * @param {string} studentId - The student ID (e.g., '20250001')
  * @param {string} grade - The grade level
  * @param {string} semester - The semester
  * @param {Object} gradeData - The grade data to submit
@@ -135,6 +159,9 @@ export const getGradeInputPeriod = async () => {
  */
 export const getStudentGrades = async (studentId, grade, semester, gradeData = null) => {
   try {
+    // 학생 ID 처리
+    const processedId = processStudentId(studentId);
+    
     // POST 요청으로 변경하고 요청 본문 추가
     const requestBody = gradeData || {
       grade,
@@ -144,7 +171,7 @@ export const getStudentGrades = async (studentId, grade, semester, gradeData = n
       subjects: []
     };
     
-    const response = await apiClient.post(`/grades/students/${studentId}`, requestBody);
+    const response = await apiClient.post(`/grades/students/${processedId}`, requestBody);
     return response.data;
   } catch (error) {
     console.warn('API call failed, using dummy data:', error);
@@ -159,13 +186,16 @@ export const getStudentGrades = async (studentId, grade, semester, gradeData = n
 
 /**
  * Submit grades for a student
- * @param {string} studentId - The student ID
+ * @param {string} studentId - The student ID (e.g., '20250001')
  * @param {Object} gradeData - The grade data to submit
  * @returns {Promise<Object>} Response from the server
  */
 export const submitStudentGrades = async (studentId, gradeData) => {
   try {
-    const response = await apiClient.post(`/grades/students/${studentId}`, gradeData);
+    // 학생 ID 처리
+    const processedId = processStudentId(studentId);
+    
+    const response = await apiClient.post(`/grades/students/${processedId}`, gradeData);
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -185,7 +215,7 @@ export const submitStudentGrades = async (studentId, gradeData) => {
 
 /**
  * Update grades for a student using PATCH method
- * @param {string} studentId - The student ID
+ * @param {string} studentId - The student ID (e.g., '20250001')
  * @param {Object} gradeData - The grade data to update
  * @param {string} gradeData.grade - The grade level
  * @param {string} gradeData.semester - The semester
@@ -196,7 +226,10 @@ export const submitStudentGrades = async (studentId, gradeData) => {
  */
 export const updateStudentGrades = async (studentId, gradeData) => {
   try {
-    const response = await apiClient.patch(`/grades/students/${studentId}`, gradeData);
+    // 학생 ID 처리
+    const processedId = processStudentId(studentId);
+    
+    const response = await apiClient.patch(`/grades/students/${processedId}`, gradeData);
     return response.data;
   } catch (error) {
     if (error.response) {

@@ -1,11 +1,23 @@
 pipeline {
     agent any
 
+    environment {
+        REACT_APP_API_URL = credentials('REACT_API_URL')  // Jenkins에 등록된 값 사용
+    }
+
     stages {
         stage('Clone') {
             steps {
                 git branch: 'main',
                     url: 'https://github.com/INU-SoftwareDesign/Front-end.git'
+            }
+        }
+
+        stage('Write .env') {
+            steps {
+                sh """
+                    echo "REACT_APP_API_URL=${REACT_APP_API_URL}" > .env
+                """
             }
         }
 

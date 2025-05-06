@@ -149,13 +149,21 @@ const StudentRecordPage = () => {
       ) : students.length === 0 ? (
         <NoDataMessage>해당 조건의 학생 정보가 없습니다.</NoDataMessage>
       ) : (
-        students.map((student, index) => (
-          <StudentListItem 
-            key={student.id} 
-            student={student} 
-            index={index} 
-          />
-        ))
+        // 필터링된 학생들을 번호순으로 정렬하여 표시
+        students
+          .filter(student => 
+            // 현재 선택된 학년과 반에 맞는 학생들만 필터링
+            String(student.grade) === String(selectedGrade) && 
+            String(student.classNumber) === String(selectedClassNumber)
+          )
+          .sort((a, b) => parseInt(a.number) - parseInt(b.number)) // 학생 번호 순으로 정렬
+          .map((student, index) => (
+            <StudentListItem 
+              key={student.id} 
+              student={student} 
+              index={index} 
+            />
+          ))
       )}
     </PageContainer>
   );

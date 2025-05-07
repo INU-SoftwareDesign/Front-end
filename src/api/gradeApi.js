@@ -12,18 +12,21 @@ import apiClient from './apiClient';
 const processStudentId = (studentId) => {
   if (!studentId) return studentId;
   
+  // studentId가 문자열이 아닌 경우 문자열로 변환
+  const studentIdStr = String(studentId);
+  
   // 학생 ID에서 뒤의 숫자 4개를 추출
-  let processedId = studentId;
+  let processedId = studentIdStr;
   
   // 학생 ID가 최소 4자리 이상인 경우
-  if (studentId.length >= 4) {
-    processedId = studentId.slice(-4); // 뒤에서 4개의 문자만 추출
+  if (studentIdStr.length >= 4) {
+    processedId = studentIdStr.slice(-4); // 뒤에서 4개의 문자만 추출
   }
   
   // 앞에 0이 붙어있으면 제거 (e.g., '0001' -> '1')
   processedId = processedId.replace(/^0+/, '');
   
-  console.log(`원본 studentId: ${studentId}, 변환된 studentId: ${processedId}`);
+  console.log(`원본 studentId: ${studentIdStr}, 변환된 studentId: ${processedId}`);
   return processedId;
 };
 

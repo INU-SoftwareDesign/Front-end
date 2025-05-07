@@ -80,6 +80,7 @@ const StudentDetailPage = () => {
   const [activeTab, setActiveTab] = useState('personal');
   const [scoreTabLoaded, setScoreTabLoaded] = useState(false);
   const [counselingTabLoaded, setCounselingTabLoaded] = useState(false);
+  const [attendanceTabLoaded, setAttendanceTabLoaded] = useState(false);
   
   // Get current user from store
   const currentUser = useUserStore(state => state.currentUser);
@@ -122,6 +123,13 @@ const StudentDetailPage = () => {
       setCounselingTabLoaded(prev => !prev);
       console.log('상담 탭 클릭됨, API 호출 트리거');
     }
+    
+    // 출결 탭을 클릭했을 때 로드 상태 업데이트
+    if (tabId === 'attendance') {
+      // 현재 값의 반대로 설정하여 매번 변경되도록 함
+      setAttendanceTabLoaded(prev => !prev);
+      console.log('출결 탭 클릭됨, API 호출 트리거');
+    }
   };
 
   // 탭 콘텐츠 렌더링 전에 디버깅 로그 추가
@@ -146,7 +154,13 @@ const StudentDetailPage = () => {
         console.log('ScoreTab 렌더링 전 데이터:', { urlId: id, studentId: student.studentId, scoreTabLoaded });
         return <ScoreTab student={student} studentUrlId={id} forceLoad={scoreTabLoaded} />;
       case 'attendance':
-        return <AttendanceTab student={student} currentUser={currentUser}/>;
+        console.log('AttendanceTab 렌더링 전 데이터:', { urlId: id, studentId: student?.studentId, attendanceTabLoaded });
+        return <AttendanceTab 
+          student={student} 
+          currentUser={currentUser} 
+          forceLoad={attendanceTabLoaded} 
+          studentUrlId={id} // URL에서 가져온 학생 ID 전달
+        />;
       case 'specialNotes':
         return <SpecialNotesTab student={student} />;
       case 'volunteer':

@@ -5,6 +5,29 @@ import apiClient from './apiClient';
  */
 
 /**
+ * Utility function to process student ID
+ * @param {string} studentId - The raw student ID (e.g., '20250001')
+ * @returns {string} - Processed student ID (e.g., '1')
+ */
+const processStudentId = (studentId) => {
+  if (!studentId) return studentId;
+  
+  // 학생 ID에서 뒤의 숫자 4개를 추출
+  let processedId = studentId;
+  
+  // 학생 ID가 최소 4자리 이상인 경우
+  if (studentId.length >= 4) {
+    processedId = studentId.slice(-4); // 뒤에서 4개의 문자만 추출
+  }
+  
+  // 앞에 0이 붙어있으면 제거 (e.g., '0001' -> '1')
+  processedId = processedId.replace(/^0+/, '');
+  
+  console.log(`원본 studentId: ${studentId}, 변환된 studentId: ${processedId}`);
+  return processedId;
+};
+
+/**
  * Add a new attendance record for a student
  * @param {string} studentId - The student ID
  * @param {Object} attendanceData - The attendance data
@@ -19,7 +42,11 @@ import apiClient from './apiClient';
  */
 export const addAttendanceRecord = async (studentId, attendanceData) => {
   try {
-    const response = await apiClient.post(`/attendances/students/${studentId}`, attendanceData);
+    // studentId 처리
+    const processedId = processStudentId(studentId);
+    console.log(`출결 데이터 추가 API 호출: 학생 ID ${processedId}`);
+    
+    const response = await apiClient.post(`/attendances/students/${processedId}`, attendanceData);
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -54,7 +81,11 @@ export const addAttendanceRecord = async (studentId, attendanceData) => {
  */
 export const getAttendanceRecords = async (studentId, params = {}) => {
   try {
-    const response = await apiClient.get(`/attendances/students/${studentId}`, { params });
+    // studentId 처리
+    const processedId = processStudentId(studentId);
+    console.log(`출결 데이터 조회 API 호출: 학생 ID ${processedId}`);
+    
+    const response = await apiClient.get(`/attendances/students/${processedId}`, { params });
     return response.data;
   } catch (error) {
     console.warn('API call failed, using dummy data:', error);

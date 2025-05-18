@@ -10,11 +10,9 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    // 브랜치 이름 추출 (예: origin/develop → develop)
                     env.CURRENT_BRANCH = env.GIT_BRANCH.replaceFirst(/^origin\//, '')
                     echo "✅ 현재 브랜치: ${env.CURRENT_BRANCH}"
 
-                    // 브랜치 기반 태그 및 포트 설정
                     if (env.CURRENT_BRANCH == 'main') {
                         env.TAG = 'prod'
                         env.PORT = '3000'
@@ -24,6 +22,26 @@ pipeline {
                     } else {
                         error "❌ 지원하지 않는 브랜치입니다: ${env.CURRENT_BRANCH}"
                     }
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage('Unit Test') {
+            steps {
+                sh 'npm test'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'sonar-scanner'
                 }
             }
         }

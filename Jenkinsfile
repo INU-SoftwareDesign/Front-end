@@ -68,14 +68,20 @@ pipeline {
             }
         }
 
-        stage('Docker Run') {
-            steps {
-                sh '''
-                    docker stop react-container-$TAG || true
-                    docker rm react-container-$TAG || true
-                    docker run -d -p $PORT:3000 --name react-container-$TAG $DOCKER_IMAGE:$TAG
-                '''
-            }
+    }
+
+    post {
+        always {
+            echo "🧹 디스크 정리 시작"
+
+            // 중지된 컨테이너 제거
+            sh 'docker container prune -f'
+
+            // 빌드된 이미지 삭제
+            sh 'docker rmi $DOCKER_IMAGE:$TAG || true'
+
+            // Jenkins 워크스페이스 정리
+            cleanWs()
         }
     }
 }

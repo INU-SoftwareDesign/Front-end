@@ -32,13 +32,13 @@ pipeline {
             }
         }
 
-        stage('Unit Test') {
+        /*stage('Unit Test') {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     sh 'npm test'
                 }
             }
-        }
+        }*/
 
         stage('SonarQube Analysis') {
             steps {

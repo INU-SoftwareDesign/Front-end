@@ -43,7 +43,9 @@ export const checkUserIdAvailability = async (userId) => {
  */
 export const loginUser = async (credentials) => {
   try {
+    console.log('Attempting login with credentials:', credentials);
     const response = await apiClient.post('/auth/login', credentials);
+    console.log('Login API response:', response.data);
     
     // Store tokens in localStorage
     if (response.data.token) {
@@ -54,12 +56,35 @@ export const loginUser = async (credentials) => {
       localStorage.setItem('refreshToken', response.data.refresh);
     }
     
+    // Check if the response contains user data
+    if (!response.data.data || !response.data.data.user) {
+      console.error('Login response missing user data:', response.data);
+      // If the API doesn't return user data, create a default structure
+      // This ensures the Zustand store has the expected format
+      return {
+        success: true,
+        data: {
+          user: response.data.user || {
+            id: credentials.id,
+            name: response.data.name || '사용자',
+            role: response.data.role || 'teacher',
+            ...response.data
+          }
+        }
+      };
+    }
+    
     return response.data;
   } catch (error) {
+    console.error('Login error details:', error);
+    if (error.response) {
+      console.error('Login error response:', error.response.data);
+    }
+    
     if (error.response && error.response.status === 401) {
       throw new Error('아이디 또는 비밀번호가 일치하지 않습니다.');
     }
-    throw new Error('로그인에 실패했습니다. 나중에 다시 시도해주세요.');
+    throw new Error('로그인에 실패했습니다. 나중에 다시 시도해주세요. ' + (error.message || ''));
   }
 };
 

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styled from "styled-components";
-import dummyGradeData from "../../data/dummyGradeData";
 import { initialSubjectData } from "../../data/dummySubjectData";
 import { getGradeInputPeriod, getStudentGrades, submitStudentGrades } from "../../api/gradeApi";
+import { getStudentById } from "../../api/studentApi";
 import { Radar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -450,11 +450,9 @@ const PeriodWarning = styled.div`
 const GradeEditPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-
-  // Find student by ID
-  const student = dummyGradeData.students.find(
-    (student) => student.id === parseInt(id)
-  );
+  
+  // State for student data
+  const [student, setStudent] = useState(null);
 
   // State for grade input period
   const [gradeInputPeriod, setGradeInputPeriod] = useState({
@@ -483,53 +481,83 @@ const GradeEditPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Fetch grade input period and student grades on component mount
+  // Fetch student data, grade input period and student grades on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setIsLoading(true);
+        
+        // Fetch student data first
+        if (id) {
+          try {
+            const studentData = await getStudentById(id);
+            setStudent(studentData);
+          } catch (error) {
+            console.error('Error fetching student data:', error);
+            setError('학생 정보를 찾을 수 없습니다.');
+            setIsLoading(false);
+            return; // Stop further execution if student data cannot be fetched
+          }
+        } else {
+          setError('학생 ID가 제공되지 않았습니다.');
+          setIsLoading(false);
+          return;
+        }
+        
         // Fetch grade input period
         const periodData = await getGradeInputPeriod();
         setGradeInputPeriod(periodData);
         
-        // Fetch student grades if student exists
-        if (student) {
-          const gradeData = await getStudentGrades(
-            id, 
-            student.grade, 
-            semester.replace('학기', '')
-          );
-          
-          if (gradeData.subjects && gradeData.subjects.length > 0) {
-            // Map API data to component state format
-            const mappedSubjects = gradeData.subjects.map((subject, index) => ({
-              id: index + 1,
-              name: subject.subject,
-              credits: subject.credits,
-              midtermScore: subject.midterm,
-              finalScore: subject.final,
-              performanceScore: subject.performance,
-              calculatedScore: subject.totalScore,
-              ratios: {
-                midterm: 40,
-                final: 40,
-                performance: 20
-              }
-            }));
-            setSubjects(mappedSubjects);
-            setStatus(gradeData.gradeStatus || '미입력');
-          }
+        // Now that we have student data, fetch grades
+        const studentGrade = student ? student.grade : '1'; // 학생 정보가 없으면 기본값 사용
+        const semesterValue = semester.replace('학기', '');
+        
+        // POST 요청에 맞게 구조화된 데이터 생성
+        const gradeRequestData = {
+          grade: studentGrade,
+          semester: semesterValue,
+          gradeStatus: '미입력',
+          updatedAt: new Date().toISOString(),
+          subjects: []
+        };
+        
+        const gradeData = await getStudentGrades(
+          id, 
+          studentGrade, 
+          semesterValue,
+          gradeRequestData
+        );
+        
+        if (gradeData && gradeData.subjects && gradeData.subjects.length > 0) {
+          // Map API data to component state format
+          const mappedSubjects = gradeData.subjects.map((subject, index) => ({
+            id: index + 1,
+            name: subject.subject,
+            credits: subject.credits,
+            midtermScore: subject.midterm,
+            finalScore: subject.final,
+            performanceScore: subject.performance,
+            calculatedScore: subject.totalScore,
+            ratios: {
+              midterm: 40,
+              final: 40,
+              performance: 20
+            }
+          }));
+          setSubjects(mappedSubjects);
+          setStatus(gradeData.gradeStatus || '미입력');
         }
         
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
-        setError(error.message);
+        setError(error.message || '데이터를 불러오는 중 오류가 발생했습니다.');
         setIsLoading(false);
       }
     };
     
     fetchData();
-  }, [id, student, semester]);
+  }, [id, semester]);
 
   // Calculate grade based on percentile
   const calculateGradeFromPercentile = (percentile) => {

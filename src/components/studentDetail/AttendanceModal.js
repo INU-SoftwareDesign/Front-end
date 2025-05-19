@@ -198,6 +198,26 @@ const SaveButton = styled(Button)`
   }
 `;
 
+const ErrorMessage = styled.div`
+  background-color: #ffebee;
+  color: #d32f2f;
+  padding: 10px 16px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-family: 'Pretendard-Regular', sans-serif;
+  font-size: 14px;
+`;
+
+const SuccessMessage = styled.div`
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  padding: 10px 16px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-family: 'Pretendard-Regular', sans-serif;
+  font-size: 14px;
+`;
+
 const AttendanceModal = ({ 
   isOpen, 
   onClose, 
@@ -213,6 +233,7 @@ const AttendanceModal = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [formData, setFormData] = useState({
     attendanceType: attendanceType || 'absent',
     reasonType: reasonType || 'illness',
@@ -230,6 +251,7 @@ const AttendanceModal = ({
         reason: ''
       });
       setError(null);
+      setSuccess(null);
     }
   }, [isOpen, attendanceType, reasonType]);
   
@@ -257,8 +279,14 @@ const AttendanceModal = ({
   };
   
   const handleSubmit = async () => {
+    // 학생 ID 디버깅 정보 추가
+    console.log('현재 studentId 값:', studentId);
+    console.log('학생 이름:', studentName);
+    console.log('학년:', grade);
+    
     if (!studentId) {
-      setError('학생 정보가 올바르지 않습니다.');
+      console.error('학생 ID가 없습니다. 출결 데이터를 추가할 수 없습니다.');
+      setError('학생 정보가 올바르지 않습니다. (학생 ID 없음)');
       return;
     }
     
@@ -273,6 +301,10 @@ const AttendanceModal = ({
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const homeTeacher = user.name || '담당 교사';
       
+      // studentId가 문자열인지 확인하고 수정
+      const processedStudentId = typeof studentId === 'string' ? studentId : String(studentId);
+      console.log(`출결 데이터 추가 요청: 학생 ID ${processedStudentId}`);
+      
       // Prepare data for API
       const attendanceData = {
         grade: grade,
@@ -284,27 +316,33 @@ const AttendanceModal = ({
         homeTeacher: homeTeacher
       };
       
+      console.log('출결 데이터:', attendanceData);
+      
       // Call API
-      await addAttendanceRecord(studentId, attendanceData);
+      const response = await addAttendanceRecord(processedStudentId, attendanceData);
+      console.log('출결 데이터 추가 성공:', response);
+      
+      // 저장 성공 메시지 표시
+      setSuccess('출결 데이터가 성공적으로 저장되었습니다.');
       
       // Call the original onSave function to update UI
-      onSave({
-        ...formData,
-        attendanceType: formData.attendanceType || attendanceType,
-        reasonType: formData.reasonType || reasonType
-      });
+      if (typeof onSave === 'function') {
+        onSave({
+          ...formData,
+          attendanceType: formData.attendanceType || attendanceType,
+          reasonType: formData.reasonType || reasonType,
+        });
+      }
       
-      // Reset form
-      setIsEditing(false);
-      setFormData({
-        attendanceType: attendanceType || 'absent',
-        reasonType: reasonType || 'illness',
-        date: new Date().toISOString().split('T')[0],
-        reason: ''
-      });
-    } catch (err) {
-      setError(err.message || '출결 내역 추가 중 오류가 발생했습니다.');
-      console.error('Error adding attendance record:', err);
+      // 잠시 후 모달 닫기 (성공 메시지 확인 시간 제공)
+      setTimeout(() => {
+        // Reset form and close modal
+        setIsEditing(false);
+        onClose();
+      }, 1000);
+    } catch (error) {
+      console.error('출결 데이터 추가 오류:', error);
+      setError('출결 데이터 추가 중 오류가 발생했습니다: ' + (error.message || '알 수 없는 오류'));
     } finally {
       setIsSubmitting(false);
     }
@@ -334,6 +372,14 @@ const AttendanceModal = ({
           </DetailsList>
         ) : (
           <NoDataMessage>등록된 내역이 없습니다.</NoDataMessage>
+        )}
+        
+        {error && (
+          <ErrorMessage>{error}</ErrorMessage>
+        )}
+        
+        {success && (
+          <SuccessMessage>{success}</SuccessMessage>
         )}
         
         {canEdit && (

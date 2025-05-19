@@ -78,6 +78,9 @@ const StudentDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('personal');
+  const [scoreTabLoaded, setScoreTabLoaded] = useState(false);
+  const [counselingTabLoaded, setCounselingTabLoaded] = useState(false);
+  const [attendanceTabLoaded, setAttendanceTabLoaded] = useState(false);
   
   // Get current user from store
   const currentUser = useUserStore(state => state.currentUser);
@@ -102,14 +105,62 @@ const StudentDetailPage = () => {
     fetchStudentData();
   }, [id]);
 
+  // 탭 변경 핸들러
+  const handleTabChange = (tabId) => {
+    // 탭이 변경되면 이전 탭 상태 초기화
+    setActiveTab(tabId);
+    
+    // 성적 탭을 클릭했을 때 로드 상태 업데이트
+    if (tabId === 'score') {
+      // 현재 값의 반대로 설정하여 매번 변경되도록 함
+      setScoreTabLoaded(prev => !prev);
+      console.log('성적 탭 클릭됨, API 호출 트리거');
+    }
+    
+    // 상담 탭을 클릭했을 때 로드 상태 업데이트
+    if (tabId === 'counseling') {
+      // 현재 값의 반대로 설정하여 매번 변경되도록 함
+      setCounselingTabLoaded(prev => !prev);
+      console.log('상담 탭 클릭됨, API 호출 트리거');
+    }
+    
+    // 출결 탭을 클릭했을 때 로드 상태 업데이트
+    if (tabId === 'attendance') {
+      // 현재 값의 반대로 설정하여 매번 변경되도록 함
+      setAttendanceTabLoaded(prev => !prev);
+      console.log('출결 탭 클릭됨, API 호출 트리거');
+    }
+  };
+
+  // 탭 콘텐츠 렌더링 전에 디버깅 로그 추가
   const renderTabContent = () => {
+    // 현재 상태 로그
+    console.log('StudentDetailPage 탭 콘텐츠 렌더링:', { 
+      activeTab, 
+      studentId: student?.studentId, 
+      scoreTabLoaded,
+      counselingTabLoaded
+    });
+    
     switch (activeTab) {
       case 'personal':
         return <PersonalInfoTab student={student} currentUser={currentUser} />;
       case 'score':
-        return <ScoreTab student={student} />;
+        // student 객체가 있는지 확인
+        if (!student) {
+          console.error('ScoreTab에 전달할 student 객체가 없습니다!');
+          return <div>학생 정보를 찾을 수 없습니다.</div>;
+        }
+        console.log('ScoreTab 렌더링 전 데이터:', { urlId: id, studentId: student.studentId, scoreTabLoaded });
+        return <ScoreTab student={student} studentUrlId={id} forceLoad={scoreTabLoaded} />;
       case 'attendance':
-        return <AttendanceTab student={student} currentUser={currentUser}/>;
+        console.log('AttendanceTab 렌더링 전 데이터:', { urlId: id, studentId: student?.studentId, attendanceTabLoaded });
+        return <AttendanceTab 
+          student={student} 
+          currentUser={currentUser} 
+          forceLoad={attendanceTabLoaded} 
+          studentUrlId={id} // URL에서 가져온 학생 ID 전달
+        />;
       case 'specialNotes':
         return <SpecialNotesTab student={student} />;
       case 'volunteer':
@@ -117,7 +168,8 @@ const StudentDetailPage = () => {
       case 'reading':
         return <ReadingTab student={student} />;
       case 'counseling':
-        return <CounselingTab student={student} currentUser={currentUser} />;
+        console.log('CounselingTab 렌더링 전 데이터:', { urlId: id, studentId: student?.studentId, counselingTabLoaded });
+        return <CounselingTab student={student} studentUrlId={id} forceLoad={counselingTabLoaded} currentUser={currentUser} />;
       case 'feedback':
         return <FeedbackTab student={student} />;
       default:
@@ -150,7 +202,7 @@ const StudentDetailPage = () => {
         <StudentProfileInfo student={student} />
       </TopSection>
 
-      <StudentTabs activeTab={activeTab} onTabChange={setActiveTab} />
+      <StudentTabs activeTab={activeTab} onTabChange={handleTabChange} />
       
       <ContentContainer>
         {renderTabContent()}

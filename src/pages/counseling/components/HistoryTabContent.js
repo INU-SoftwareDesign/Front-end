@@ -294,7 +294,65 @@ const CancelButton = styled(Button)`
   }
 `;
 
-const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecords }) => {
+const DetailButton = styled.button`
+  background-color: #1D4EB0;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-family: 'Pretendard-Medium', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background-color: #1A44A3;
+  }
+`;
+
+const RefreshButton = styled.button`
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #666;
+  padding: 6px 12px;
+  font-size: 14px;
+  margin-left: 10px;
+  cursor: pointer;
+  float: right;
+  
+  &:hover:not(:disabled) {
+    background-color: #e0e0e0;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const LoadingMessage = styled.div`
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  font-family: 'Pretendard-Regular', sans-serif;
+`;
+
+const ErrorMessage = styled.div`
+  padding: 20px;
+  text-align: center;
+  color: #f44336;
+  font-family: 'Pretendard-Regular', sans-serif;
+`;
+
+const NoDataMessage = styled.div`
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  font-family: 'Pretendard-Regular', sans-serif;
+`;
+
+const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecords, isLoading, error, onRefresh }) => {
   const [selectedCounseling, setSelectedCounseling] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -304,9 +362,10 @@ const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecord
     "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"
   ]);
   const [bookedTimes, setBookedTimes] = useState([]);
+  const [detailLoading, setDetailLoading] = useState(false);
   
   // Sort counseling records by date (newest first)
-  const sortedRecords = [...counselingRecords].sort((a, b) => {
+  const sortedRecords = [...(counselingRecords || [])].sort((a, b) => {
     return new Date(b.counselingDate) - new Date(a.counselingDate);
   });
   
@@ -315,28 +374,29 @@ const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecord
     // 초기 상태 설정
     setIsModalOpen(true);
     setIsEditing(false);
+    setSelectedCounseling(counseling);
     
     // 상담 상세 정보 API 호출
     fetchCounselingDetails(counseling);
-    
-    // Get booked times for the counseling date
-    // In a real app, this would be fetched from an API
-    const bookedForDate = Object.entries(dummyBookedTimes)
-      .find(([date]) => date === counseling.counselingDate);
-    
-    if (bookedForDate) {
-      setBookedTimes(bookedForDate[1].filter(time => time !== counseling.counselingTime));
-    } else {
-      setBookedTimes([]);
+  };
+  
+  // 새로고침 버튼 클릭 핸들러
+  const handleRefresh = () => {
+    if (typeof onRefresh === 'function') {
+      onRefresh();
     }
   };
   
   // 상담 상세 정보 가져오기
   const fetchCounselingDetails = async (counseling) => {
+    if (!counseling || !counseling.id) return;
+    
+    setDetailLoading(true);
+    
     try {
       // 상담 정보 API 호출 (통합된 API 사용)
       const response = await counselingApi.getStudentCounselings(counseling.studentId, {
-        status: counseling.status
+        id: counseling.id // 특정 상담 ID만 조회
       });
       
       // API 응답에서 해당 상담 정보 찾기
@@ -467,63 +527,56 @@ const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecord
   return (
     <Container>
       <TableContainer>
-        <TableTitle>상담 내역</TableTitle>
+        <TableTitle>
+          상담 내역
+          <RefreshButton onClick={handleRefresh} disabled={isLoading}>
+            {isLoading ? '불러오는 중...' : '새로고침'}
+          </RefreshButton>
+        </TableTitle>
         
-        {sortedRecords.length > 0 ? (
+        {isLoading ? (
+          <LoadingMessage>상담 내역을 불러오는 중입니다...</LoadingMessage>
+        ) : error ? (
+          <ErrorMessage>{error}</ErrorMessage>
+        ) : sortedRecords.length === 0 ? (
+          <NoDataMessage>상담 내역이 없습니다.</NoDataMessage>
+        ) : (
           <CounselingTable>
             <TableHeader>
-              <TableRow>
-                <TableHeaderCell>번호</TableHeaderCell>
-                <TableHeaderCell>상담 날짜</TableHeaderCell>
-                <TableHeaderCell>상담 시간</TableHeaderCell>
-                <TableHeaderCell>상담자명</TableHeaderCell>
-                <TableHeaderCell>상담종류</TableHeaderCell>
+              <tr>
+                <TableHeaderCell>신청일</TableHeaderCell>
+                <TableHeaderCell>상담일</TableHeaderCell>
+                <TableHeaderCell>상담시간</TableHeaderCell>
                 <TableHeaderCell>상담유형</TableHeaderCell>
+                <TableHeaderCell>상담주제</TableHeaderCell>
+                <TableHeaderCell>상담사</TableHeaderCell>
                 <TableHeaderCell>상태</TableHeaderCell>
                 <TableHeaderCell>상세보기</TableHeaderCell>
-                <TableHeaderCell>예약취소</TableHeaderCell>
-              </TableRow>
+              </tr>
             </TableHeader>
             <tbody>
               {sortedRecords.map((counseling, index) => (
-                <TableRow key={counseling.id}>
-                  <TableCell>{index + 1}</TableCell>
+                <TableRow key={index}>
+                  <TableCell>{counseling.requestDate}</TableCell>
                   <TableCell>{counseling.counselingDate}</TableCell>
                   <TableCell>{counseling.counselingTime}</TableCell>
-                  <TableCell>{counseling.counselorName}</TableCell>
                   <TableCell>{counseling.counselingType}</TableCell>
                   <TableCell>{counseling.counselingCategory}</TableCell>
+                  <TableCell>{counseling.counselorName}</TableCell>
                   <TableCell>
                     <StatusBadge status={counseling.status}>
                       {counseling.status}
                     </StatusBadge>
                   </TableCell>
                   <TableCell>
-                    <ActionButton onClick={() => handleDetailClick(counseling)}>
+                    <DetailButton onClick={() => handleDetailClick(counseling)}>
                       상세보기
-                    </ActionButton>
-                  </TableCell>
-                  <TableCell>
-                    <DangerButton 
-                      onClick={() => {
-                        setSelectedCounseling(counseling);
-                        handleCancelCounseling();
-                      }}
-                      disabled={!canModify(counseling)}
-                    >
-                      취소
-                    </DangerButton>
+                    </DetailButton>
                   </TableCell>
                 </TableRow>
               ))}
             </tbody>
           </CounselingTable>
-        ) : (
-          <EmptyState>
-            <EmptyStateText>
-              상담 내역이 없습니다.
-            </EmptyStateText>
-          </EmptyState>
         )}
       </TableContainer>
       
@@ -552,8 +605,8 @@ const HistoryTabContent = ({ currentUser, counselingRecords, setCounselingRecord
                   <InfoLabel>학년/반/번호</InfoLabel>
                   <InfoValue>
                     {currentUser.role === 'student' 
-                      ? `${currentUser.grade}학년 ${currentUser.class}반 ${currentUser.number}번`
-                      : `${selectedCounseling.grade}학년 ${selectedCounseling.class}반 ${selectedCounseling.number}번`
+                      ? `${currentUser.grade}학년 ${currentUser.classNumber}반 ${currentUser.number}번`
+                      : `${selectedCounseling.grade}학년 ${selectedCounseling.classNumber}반 ${selectedCounseling.number}번`
                     }
                   </InfoValue>
                 </InfoItem>

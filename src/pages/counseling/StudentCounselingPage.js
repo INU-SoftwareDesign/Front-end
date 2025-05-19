@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import useUserStore from '../../stores/useUserStore';
-import dummyStudentCounselingData from '../../data/dummyStudentCounselingData';
+import counselingApi from '../../api/counselingApi';
 import RequestTabContent from './components/RequestTabContent';
 import HistoryTabContent from './components/HistoryTabContent';
 
@@ -49,35 +49,75 @@ const ContentContainer = styled.div`
 
 const StudentCounselingPage = () => {
   const navigate = useNavigate();
+  const { studentId: studentUrlId } = useParams(); // URL에서 학생 ID 가져오기
   const currentUser = useUserStore(state => state.currentUser);
   const [activeTab, setActiveTab] = useState('request');
   const [counselingRecords, setCounselingRecords] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   // Check if user is a student or parent
   useEffect(() => {
-    if (currentUser && !['student', 'parent'].includes(currentUser.role)) {
+    if (currentUser && !['student', 'parent', 'teacher'].includes(currentUser.role)) {
       navigate('/');
     }
   }, [currentUser, navigate]);
 
-  // Load counseling data
+  // 상담 내역 데이터 불러오기
+  const fetchCounselingRecords = async () => {
+    if (!currentUser) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      let studentId;
+      
+      // 학생 ID 결정 (URL 파라미터 > 현재 사용자 ID)
+      if (studentUrlId) {
+        studentId = studentUrlId;
+      } else if (currentUser.role === 'student') {
+        studentId = currentUser.id;
+      } else if (currentUser.role === 'parent' && currentUser.children && currentUser.children.length > 0) {
+        // 부모인 경우 첫 번째 자녀의 ID 사용
+        studentId = currentUser.children[0].id;
+      }
+      
+      if (!studentId) {
+        setError('학생 정보를 찾을 수 없습니다.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // API 호출
+      const response = await counselingApi.getStudentCounselings(studentId);
+      
+      if (response && response.data && response.data.success) {
+        setCounselingRecords(response.data.data || []);
+      } else {
+        setError('상담 내역을 불러오는데 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('상담 내역 조회 오류:', error);
+      setError('상담 내역을 불러오는데 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // 초기 데이터 로드
   useEffect(() => {
     if (currentUser) {
-      if (currentUser.role === 'student') {
-        // Filter counseling records for the current student
-        const studentRecords = dummyStudentCounselingData.studentCounselings.filter(
-          record => record.studentId === parseInt(currentUser.id)
-        );
-        setCounselingRecords(studentRecords);
-      } else if (currentUser.role === 'parent') {
-        // Filter counseling records for the parent's child
-        const parentRecords = dummyStudentCounselingData.parentCounselings.filter(
-          record => record.parentId === currentUser.id
-        );
-        setCounselingRecords(parentRecords);
-      }
+      fetchCounselingRecords();
     }
-  }, [currentUser]);
+  }, [currentUser, studentUrlId]);
+  
+  // 탭 변경 시 데이터 로드
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchCounselingRecords();
+    }
+  }, [activeTab]);
 
   return (
     <PageContainer>
@@ -108,6 +148,9 @@ const StudentCounselingPage = () => {
             currentUser={currentUser}
             counselingRecords={counselingRecords}
             setCounselingRecords={setCounselingRecords}
+            isLoading={isLoading}
+            error={error}
+            onRefresh={fetchCounselingRecords}
           />
         )}
       </ContentContainer>

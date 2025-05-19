@@ -291,7 +291,7 @@ const RequestTabContent = ({ currentUser }) => {
         setFormData(prev => ({
           ...prev,
           name: currentUser.name,
-          gradeClassNumber: `${currentUser.grade}학년 ${currentUser.class}반 ${currentUser.number}번`,
+          gradeClassNumber: `${currentUser.grade}학년 ${currentUser.classNumber}반 ${currentUser.number}번`,
           contactNumber: '010-1234-5678' // In a real app, this would come from the user profile
         }));
       } else if (currentUser.role === 'parent') {

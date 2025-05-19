@@ -7,6 +7,10 @@ import {
 } from "react-router-dom";
 import styled from "styled-components";
 
+// Import Auth Components
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AuthRoute from "./components/auth/AuthRoute";
+
 import Navbar from "./components/navigation/Navbar";
 import Sidebar from "./components/navigation/Sidebar";
 
@@ -80,15 +84,15 @@ function App() {
     <Router>
       <AppLayout>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/" element={<MainPage />} />
-          <Route path="/students" element={<StudentRecordPage />} />
-          <Route path="/student/:id" element={<StudentDetailPage />} />
-          <Route path="/grades" element={<GradeManagementPage />} />
-          <Route path="/grades/edit/:id" element={<GradeEditPage />} />
-          <Route path="/counseling" element={<CounselingPage />} />
-          <Route path="/student-counseling" element={<StudentCounselingPage />} />
+          <Route path="/login" element={<AuthRoute><LoginPage /></AuthRoute>} />
+          <Route path="/register" element={<AuthRoute><RegisterPage /></AuthRoute>} />
+          <Route path="/" element={<ProtectedRoute><MainPage /></ProtectedRoute>} />
+          <Route path="/students" element={<ProtectedRoute><StudentRecordPage /></ProtectedRoute>} />
+          <Route path="/student/:id" element={<ProtectedRoute><StudentDetailPage /></ProtectedRoute>} />
+          <Route path="/grades" element={<ProtectedRoute><GradeManagementPage /></ProtectedRoute>} />
+          <Route path="/grades/edit/:id" element={<ProtectedRoute><GradeEditPage /></ProtectedRoute>} />
+          <Route path="/counseling" element={<ProtectedRoute><CounselingPage /></ProtectedRoute>} />
+          <Route path="/student-counseling" element={<ProtectedRoute><StudentCounselingPage /></ProtectedRoute>} />
         </Routes>
       </AppLayout>
     </Router>

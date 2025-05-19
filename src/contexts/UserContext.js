@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import useUserStore from '../stores/useUserStore';
 
 // Check if we're in development mode
 const isDev = process.env.NODE_ENV === 'development';
@@ -44,21 +45,40 @@ export const UserProvider = ({ children, mockUser = null }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Get Zustand store actions
+  const zustandLogin = useUserStore(state => state.login);
+  const zustandLogout = useUserStore(state => state.logout);
 
   // Login function
   const login = (userData) => {
     setCurrentUser(userData);
     setIsAuthenticated(true);
-    // You could store user data in localStorage/sessionStorage here
+    // Store user data in localStorage
     localStorage.setItem('user', JSON.stringify(userData));
+    
+    // Synchronize with Zustand store
+    zustandLogin(userData);
   };
 
   // Logout function
-  const logout = () => {
-    setCurrentUser(null);
-    setIsAuthenticated(false);
-    // Clear stored user data
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      // Synchronize with Zustand store - await the async function
+      await zustandLogout();
+      
+      // Update context state after Zustand is updated
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      // Clear stored user data
+      localStorage.removeItem('user');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Still clear local state even if there's an error
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('user');
+    }
   };
 
   // Check if user is already logged in (from localStorage)
@@ -74,6 +94,8 @@ export const UserProvider = ({ children, mockUser = null }) => {
         const parsedUser = JSON.parse(storedUser);
         setCurrentUser(parsedUser);
         setIsAuthenticated(true);
+        // Synchronize with Zustand store
+        zustandLogin(parsedUser);
         setIsLoading(false);
         return true;
       }

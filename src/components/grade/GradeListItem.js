@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
-import { gradeInputPeriod } from '../../data/dummyGradeData';
+import { getGradeInputPeriod } from '../../api/gradeApi';
+import { getStudentGradeOverview } from '../../api/gradeApi';
 
 const ListItemContainer = styled.div`
   display: grid;
@@ -83,6 +84,57 @@ const GradeStatus = styled.div`
 
 const GradeListItem = ({ student, index }) => {
   const navigate = useNavigate();
+  const [gradeInputPeriod, setGradeInputPeriod] = useState({ isActive: false });
+  const [gradeStatus, setGradeStatus] = useState(student.gradeStatus || '미입력');
+
+  // 학생의 성적 데이터 확인
+  useEffect(() => {
+    // 성적 입력 기간 정보 가져오기
+    const fetchGradeInputPeriod = async () => {
+      try {
+        const periodData = await getGradeInputPeriod();
+        setGradeInputPeriod(periodData);
+      } catch (error) {
+        console.error('Error fetching grade input period:', error);
+      }
+    };
+
+    // 학생의 성적 데이터 확인
+    const checkStudentGradeStatus = async () => {
+      if (!student.id || !student.currentGrade || !student.currentSemester) return;
+      
+      try {
+        // 현재 선택된 학년/학기에 대한 학생 성적 데이터 조회
+        const gradeData = await getStudentGradeOverview(
+          student.id,
+          student.currentGrade,
+          student.currentSemester
+        );
+        
+        // 성적 데이터가 있으면 '입력완료'로 상태 변경
+        if (gradeData && gradeData.subjects && gradeData.subjects.length > 0) {
+          // 모든 과목에 점수가 입력되었는지 확인
+          const allSubjectsComplete = gradeData.subjects.every(subject => 
+            subject.midterm !== undefined && 
+            subject.final !== undefined && 
+            subject.performance !== undefined
+          );
+          
+          if (allSubjectsComplete) {
+            setGradeStatus('입력완료');
+          } else {
+            setGradeStatus('임시저장');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking student grade status:', error);
+        // API 호출 실패 시 기존 상태 유지
+      }
+    };
+
+    fetchGradeInputPeriod();
+    checkStudentGradeStatus();
+  }, [student.id, student.currentGrade, student.currentSemester]);
 
   const handleClick = () => {
     // Only navigate if the grade input period is active
@@ -104,11 +156,11 @@ const GradeListItem = ({ student, index }) => {
         </NameInfo>
       </NameContainer>
       <InfoText>{student.grade}</InfoText>
-      <InfoText>{student.class}</InfoText>
+      <InfoText>{student.classNumber}</InfoText>
       <InfoText>{student.number}</InfoText>
       <GradeStatusContainer>
-        <GradeStatus status={student.gradeStatus}>
-          {student.gradeStatus}
+        <GradeStatus status={gradeStatus}>
+          {gradeStatus}
         </GradeStatus>
       </GradeStatusContainer>
     </ListItemContainer>

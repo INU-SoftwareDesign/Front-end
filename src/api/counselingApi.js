@@ -49,12 +49,16 @@ const counselingApi = {
 
   /**
    * Get counseling requests for a specific teacher
-   * @param {string} teacherId - The teacher ID
+   * @param {string} teacherId - The teacher ID (e.g., 'teacher5')
    * @param {Object} params - Optional query parameters
    * @returns {Promise} - Promise with counseling requests
    */
   getTeacherCounselingRequests: (teacherId, params = {}) => {
-    return apiClient.get(`/counselings/teacher/${teacherId}/requests`, { params })
+    // 'teacher5'와 같은 형식에서 숫자만 추출
+    const teacherIdNumber = teacherId.replace('teacher', '');
+    console.log(`원본 teacherId: ${teacherId}, 변환된 teacherId: ${teacherIdNumber}`);
+    
+    return apiClient.get(`/counselings/teacher/${teacherIdNumber}/requests`, { params })
       .catch(error => {
         console.warn('API call failed, using dummy data:', error);
         
@@ -103,12 +107,16 @@ const counselingApi = {
 
   /**
    * Get scheduled counselings for a specific teacher
-   * @param {string} teacherId - The teacher ID
+   * @param {string} teacherId - The teacher ID (e.g., 'teacher5')
    * @param {Object} params - Optional query parameters
    * @returns {Promise} - Promise with scheduled counselings
    */
   getTeacherScheduledCounselings: (teacherId, params = {}) => {
-    return apiClient.get(`/counselings/teacher/${teacherId}/scheduled`, { params })
+    // 'teacher5'와 같은 형식에서 숫자만 추출
+    const teacherIdNumber = teacherId.replace('teacher', '');
+    console.log(`원본 teacherId: ${teacherId}, 변환된 teacherId: ${teacherIdNumber}`);
+    
+    return apiClient.get(`/counselings/teacher/${teacherIdNumber}/scheduled`, { params })
       .catch(error => {
         console.warn('API call failed, using dummy data:', error);
         
@@ -161,26 +169,34 @@ const counselingApi = {
 
   /**
    * Get teacher's calendar data for counseling scheduling
-   * @param {string} teacherId - The teacher ID
+   * @param {string} teacherId - The teacher ID (e.g., 'teacher5')
    * @param {number} year - The year
    * @param {number} month - The month
    * @returns {Promise} - Promise with calendar data
    */
   getTeacherCalendar: (teacherId, year, month) => {
-    return apiClient.get(`/counselings/teacher/${teacherId}/calendar`, {
+    // 'teacher5'와 같은 형식에서 숫자만 추출
+    const teacherIdNumber = teacherId.replace('teacher', '');
+    console.log(`원본 teacherId: ${teacherId}, 변환된 teacherId: ${teacherIdNumber}`);
+    
+    return apiClient.get(`/counselings/teacher/${teacherIdNumber}/calendar`, {
       params: { year, month }
     });
   },
 
   /**
    * Get available counseling times for a specific teacher on a specific date
-   * @param {string} teacherId - The teacher ID
+   * @param {string} teacherId - The teacher ID (e.g., 'teacher5')
    * @param {string} date - The date in YYYY-MM-DD format
    * @returns {Promise} - Promise with available times and booked times
    */
   getAvailableTimes: (teacherId, date) => {
+    // 'teacher5'와 같은 형식에서 숫자만 추출
+    const teacherIdNumber = teacherId.replace('teacher', '');
+    console.log(`원본 teacherId: ${teacherId}, 변환된 teacherId: ${teacherIdNumber}`);
+    
     return apiClient.get('/counselings/available-times', {
-      params: { teacherId, date }
+      params: { teacherId: teacherIdNumber, date }
     })
     .catch(error => {
       console.warn('API call failed, using dummy data:', error);
@@ -204,7 +220,14 @@ const counselingApi = {
    * @returns {Promise} - Promise with created counseling or error response
    */
   createCounselingRequest: (counselingData) => {
-    return apiClient.post('/counselings/request', counselingData)
+    // counselingData에 teacherId가 있으면 'teacher' 접두사 제거
+    const modifiedData = { ...counselingData };
+    if (modifiedData.teacherId && typeof modifiedData.teacherId === 'string' && modifiedData.teacherId.includes('teacher')) {
+      modifiedData.teacherId = modifiedData.teacherId.replace('teacher', '');
+      console.log(`원본 teacherId: ${counselingData.teacherId}, 변환된 teacherId: ${modifiedData.teacherId}`);
+    }
+    
+    return apiClient.post('/counselings', modifiedData)
       .catch(error => {
         console.warn('API call failed, using dummy response:', error);
         

@@ -45,7 +45,7 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
                         sh '''
-                            script: "sonar-scanner -Dsonar.login=$SONAR_TOKEN", label: 'SonarQube Analysis'
+                            sonar-scanner -Dsonar.login=$SONAR_TOKEN
                         '''
                     }
                 }

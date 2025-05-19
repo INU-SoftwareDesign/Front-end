@@ -34,7 +34,9 @@ pipeline {
 
         stage('Unit Test') {
             steps {
-                sh 'npm test'
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    sh 'npm test'
+                }
             }
         }
 

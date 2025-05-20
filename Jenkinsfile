@@ -37,7 +37,7 @@ pipeline {
 */
         stage('Docker Build') {
             steps {
-                withCredentials([string(credentialsId: 'REACT_API_URL_DEV', variable: 'API_URL')]) {
+                withCredentials([string(credentialsId: 'REACT_API_URL_TEST', variable: 'API_URL')]) {
                     sh '''
                         echo "🌐 API URL: $API_URL"
                         docker build --build-arg REACT_APP_API_BASE_URL=$API_URL -t $DOCKER_IMAGE:$TAG .

@@ -76,7 +76,7 @@ pipeline {
                         git config --global user.name "Jenkins"
                         git config --global user.email "jenkins@example.com"
                         
-                        git clone https://$GIT_USER:$GIT_TOKEN@github.com/playpus322/DevOps.git
+                        git clone https://$GIT_USER:$GIT_TOKEN@github.com/platypus322/DevOps.git
 
                         cd DevOps/helm/frontend/prod
 

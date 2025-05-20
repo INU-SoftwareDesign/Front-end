@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'mario322/react-app'
+        DOCKER_IMAGE = 'mario322/react-app-test'
     }
 
     stages {
@@ -75,6 +75,26 @@ pipeline {
         }
 
     }
+
+        stage('Update GitOps') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github-cred', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+                    sh '''
+                        git config --global user.name "Jenkins"
+                        git config --global user.email "jenkins@example.com"
+                        git clone https://$GIT_USER:$GIT_TOKEN@github.com/your-org/DevOps.git
+                        cd DevOps/helm/backend/prod
+
+                        sed -i "s/tag:.*/tag: $TAG/" values.yaml
+
+                        git add values.yaml
+                        git commit -m "🔄 Update backend-prod image tag to $TAG"
+                        git push origin main
+                    '''
+                }
+            }
+        }
+
 
     post {
         always {

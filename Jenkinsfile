@@ -10,21 +10,15 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    env.CURRENT_BRANCH = env.GIT_BRANCH.replaceFirst(/^origin\//, '')
-                    echo "✅ 현재 브랜치: ${env.CURRENT_BRANCH}"
-
-                    if (env.CURRENT_BRANCH == 'main') {
-                        env.TAG = 'prod'
-                        env.PORT = '3000'
-                    } else if (env.CURRENT_BRANCH == 'develop') {
-                        env.TAG = 'dev'
-                        env.PORT = '3001'
-                    } else {
-                        error "❌ 지원하지 않는 브랜치입니다: ${env.CURRENT_BRANCH}"
-                    }
+                    env.CURRENT_BRANCH = 'main'      // 고정
+                    env.TAG = "prod-${env.BUILD_NUMBER}"                 // 운영용 태그
+                    env.PORT = '3000'                // 운영 포트
+                    echo "✅ 운영 브랜치: main"
+                    echo "📦 이미지 태그: ${env.TAG}"
                 }
             }
         }
+
 
         stage('Install Dependencies') {
             steps {
@@ -73,6 +67,28 @@ pipeline {
                 }
             }
         }
+
+        stage('Update GitOps') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github-cred', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+                    sh '''
+                        git config --global user.name "Jenkins"
+                        git config --global user.email "jenkins@example.com"
+                        
+                        git clone https://$GIT_USER:$GIT_TOKEN@github.com/playpus322/DevOps.git
+
+                        cd DevOps/helm/frontend/prod
+
+                        sed -i "s/tag:.*/tag: $TAG/" values.yaml
+
+                        git add values.yaml
+                        git commit -m "🔄 Update frontend-prod image tag to $TAG"
+                        git push origin main
+                    '''
+                }
+            }
+        }
+
 
     }
 

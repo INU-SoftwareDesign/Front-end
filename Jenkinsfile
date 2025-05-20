@@ -10,31 +10,43 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    env.CURRENT_BRANCH = 'develop'
-                    env.TAG = "dev-${env.BUILD_NUMBER}"
-                    env.PORT = '3001'
-                    echo "✅ 테스트 브랜치: develop"
+                    env.CURRENT_BRANCH = 'develop'      // 고정
+                    env.TAG = "dev-${env.BUILD_NUMBER}"                 // 운영용 태그
+                    env.PORT = '3001'                // 운영 포트
+                    echo "✅ 운영 브랜치: develop"
                     echo "📦 이미지 태그: ${env.TAG}"
                 }
             }
         }
+
 
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
             }
         }
+
+        /*stage('Unit Test') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    sh 'npm test'
+                }
+            }
+        }*/
+
 /*
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
                         sh 'sonar-scanner -Dsonar.login=$SONAR_TOKEN'
+                        
                     }
                 }
             }
         }
 */
+
         stage('Docker Build') {
             steps {
                 withCredentials([string(credentialsId: 'REACT_API_URL_TEST', variable: 'API_URL')]) {
@@ -63,8 +75,9 @@ pipeline {
                     sh '''
                         git config --global user.name "Jenkins"
                         git config --global user.email "jenkins@example.com"
-
+                        
                         git clone https://$GIT_USER:$GIT_TOKEN@github.com/platypus322/DevOps.git
+
                         cd DevOps/helm/frontend/dev
 
                         sed -i "s/tag:.*/tag: $TAG/" values.yaml
@@ -76,13 +89,21 @@ pipeline {
                 }
             }
         }
+
+
     }
 
     post {
         always {
             echo "🧹 디스크 정리 시작"
+
+            // 중지된 컨테이너 제거
             sh 'docker container prune -f'
+
+            // 빌드된 이미지 삭제
             sh 'docker rmi $DOCKER_IMAGE:$TAG || true'
+
+            // Jenkins 워크스페이스 정리
             cleanWs()
         }
     }

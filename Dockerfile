@@ -15,4 +15,8 @@ RUN npm install -g serve
 WORKDIR /app
 COPY --from=build /app/build ./build
 EXPOSE 80
+
+# dns 설정용 인증 파일 복사
+COPY public/.well-known ./build/.well-known
+
 CMD ["serve", "-s", "build", "-l", "80"]

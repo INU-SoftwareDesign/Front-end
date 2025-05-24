@@ -51,8 +51,8 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'REACT_API_URL', variable: 'API_URL')]) {
                     sh """
-                        echo "🌐 API URL: $API_URL"
-                        docker build --build-arg REACT_APP_API_BASE_URL=$API_URL -t $DOCKER_IMAGE:$TAG .
+                        echo "🌐 API URL: \$API_URL"
+                        docker build --build-arg REACT_APP_API_BASE_URL=\$API_URL -t $DOCKER_IMAGE:$TAG .
                     """
                 }
             }

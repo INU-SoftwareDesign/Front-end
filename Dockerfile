@@ -20,3 +20,5 @@ EXPOSE 80
 COPY public/.well-known ./build/.well-known
 
 CMD ["serve", "-s", "build", "-l", "80"]
+
+#수정 1

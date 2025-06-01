@@ -10,10 +10,10 @@ import AttendanceSection from '../report/AttendanceSection';
 import SpecialNoteSection from '../report/SpecialNoteSection';
 import FeedbackSection from '../report/FeedbackSection';
 
-const PrintContent = forwardRef(({ reportData, currentPage }, ref) => (
+const PrintContent = forwardRef(({ reportData, currentPage, studentId }, ref) => (
   <PrintableContent ref={ref}>
     <PersonalInfo data={reportData?.personalInfo} />
-    <GradeSection data={reportData?.grades} />
+    <GradeSection data={reportData?.grades} studentId={studentId} />
     <AttendanceSection data={reportData?.attendance} />
     <SpecialNoteSection data={reportData?.specialNotes} />
     <FeedbackSection data={reportData?.feedback} />
@@ -159,7 +159,7 @@ const ReportTab = () => {
       </ControlPanel>
 
       <ReportContainer>
-        <PrintContent ref={componentRef} reportData={reportData} currentPage={currentPage} />
+        <PrintContent ref={componentRef} reportData={reportData} currentPage={currentPage} studentId={studentId} />
       </ReportContainer>
     </Container>
   );

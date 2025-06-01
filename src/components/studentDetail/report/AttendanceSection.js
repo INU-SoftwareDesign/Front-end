@@ -1,88 +1,88 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { useReportStore } from '../../../stores/useReportStore';
 import { getAttendanceRecords } from '../../../api/attendanceApi';
-import { useParams } from 'react-router-dom';
 
-const AttendanceSection = () => {
-  const { studentId } = useParams();
-  const { reportData, setReportData, setError } = useReportStore();
+const AttendanceSection = ({ studentId }) => {
+  const [attendanceData, setAttendanceData] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchAttendance = async () => {
+    const fetchAttendanceData = async () => {
       try {
         const data = await getAttendanceRecords(studentId);
-        setReportData({ attendance: data });
-      } catch (error) {
-        console.error('Failed to fetch attendance:', error);
-        setError('출결 정보를 불러오는데 실패했습니다.');
-        // Fallback to dummy data
-        setReportData({
-          attendance: {
-            years: [
-              {
-                year: 2023,
-                totalDays: 190,
-                attendance: {
-                  present: 185,
-                  absent: 2,
-                  lateness: 1,
-                  earlyLeave: 2,
-                  sickLeave: 0
-                }
-              }
-            ]
+        // 학년과 연도를 기준으로 정렬
+        const sortedAttendance = data.attendance.sort((a, b) => {
+          if (Number(a.year) !== Number(b.year)) {
+            return Number(b.year) - Number(a.year);
           }
+          return Number(b.grade) - Number(a.grade);
         });
+        setAttendanceData({ ...data, attendance: sortedAttendance });
+      } catch (error) {
+        console.error('Failed to fetch attendance data:', error);
+        setError('출결 정보를 불러오는데 실패했습니다.');
       }
     };
 
-    if (!reportData.attendance) {
-      fetchAttendance();
+    if (studentId) {
+      fetchAttendanceData();
     }
-  }, [studentId, reportData.attendance, setReportData, setError]);
+  }, [studentId]);
 
-  // 데이터가 없거나 years 배열이 없는 경우 처리
-  if (!reportData.attendance || !reportData.attendance.years) {
+  if (error) {
     return (
       <Section>
-        <Title>출결 현황</Title>
+        <Title>출결</Title>
+        <EmptyMessage>{error}</EmptyMessage>
+      </Section>
+    );
+  }
+
+  if (!attendanceData || !attendanceData.attendance.length) {
+    return (
+      <Section>
+        <Title>출결</Title>
         <EmptyMessage>출결 정보가 없습니다.</EmptyMessage>
       </Section>
     );
   }
 
-  // years가 배열이 아닌 경우 처리
-  const years = Array.isArray(reportData.attendance.years)
-    ? reportData.attendance.years
-    : [];
-
   return (
     <Section>
-      <Title>출결 현황</Title>
+      <Title>출결</Title>
       <TableContainer>
+        <TableTitle>출결 현황</TableTitle>
         <AttendanceTable>
           <thead>
             <tr>
-              <TableHeader>학년도</TableHeader>
-              <TableHeader>전체 수업일수</TableHeader>
-              <TableHeader>출석</TableHeader>
-              <TableHeader>결석</TableHeader>
-              <TableHeader>지각</TableHeader>
-              <TableHeader>조퇴</TableHeader>
-              <TableHeader>병결</TableHeader>
+              <TableHeader rowSpan="2">학년</TableHeader>
+              <TableHeader rowSpan="2">연도</TableHeader>
+              <TableHeader rowSpan="2">총 수업일수</TableHeader>
+              <TableHeader rowSpan="2">특기사항</TableHeader>
+              <TableHeader colSpan="3">구분(질병/무단/기타)</TableHeader>
+            </tr>
+            <tr>
+              <SubTableHeader>결석</SubTableHeader>
+              <SubTableHeader>지각</SubTableHeader>
+              <SubTableHeader>조퇴</SubTableHeader>
             </tr>
           </thead>
           <tbody>
-            {years.map((yearData, index) => (
-              <tr key={index}>
-                <Td>{yearData.year}</Td>
-                <Td>{yearData.totalDays}</Td>
-                <Td>{yearData.attendance.present}</Td>
-                <Td>{yearData.attendance.absent}</Td>
-                <Td>{yearData.attendance.lateness}</Td>
-                <Td>{yearData.attendance.earlyLeave}</Td>
-                <Td>{yearData.attendance.sickLeave}</Td>
+            {attendanceData.attendance.map((record) => (
+              <tr key={`${record.grade}-${record.year}`}>
+                <TableCell>{record.grade}학년</TableCell>
+                <TableCell>{record.year}</TableCell>
+                <TableCell>{record.totalDays}일</TableCell>
+                <TableCell>{record.remarks || '-'}</TableCell>
+                <TableCell>
+                  {record.attendance.absence.illness} / {record.attendance.absence.unauthorized} / {record.attendance.absence.etc}
+                </TableCell>
+                <TableCell>
+                  {record.attendance.lateness.illness} / {record.attendance.lateness.unauthorized} / {record.attendance.lateness.etc}
+                </TableCell>
+                <TableCell>
+                  {record.attendance.earlyLeave.illness} / {record.attendance.earlyLeave.unauthorized} / {record.attendance.earlyLeave.etc}
+                </TableCell>
               </tr>
             ))}
           </tbody>
@@ -101,15 +101,6 @@ const Section = styled.section`
   page-break-inside: avoid;
 `;
 
-const EmptyMessage = styled.p`
-  text-align: center;
-  color: #78909c;
-  padding: 30px;
-  background-color: #f8f9fa;
-  border-radius: 4px;
-  font-family: 'Pretendard-Medium', sans-serif;
-`;
-
 const Title = styled.h2`
   font-family: 'Pretendard-Bold', sans-serif;
   font-size: 22px;
@@ -119,32 +110,70 @@ const Title = styled.h2`
   border-bottom: 2px solid #1a237e;
 `;
 
+const EmptyMessage = styled.p`
+  text-align: center;
+  color: #78909c;
+  padding: 30px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  font-family: 'Pretendard-Medium', sans-serif;
+`;
+
 const TableContainer = styled.div`
-  overflow-x: auto;
+  margin-top: 20px;
+  width: 100%;
+  max-width: 900px;
 `;
 
 const AttendanceTable = styled.table`
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 20px;
-  background-color: #fff;
-  border-radius: 4px;
-  overflow: hidden;
+  margin-bottom: 10px;
+  table-layout: fixed;
+  
+  th {
+    padding: 8px;
+    text-align: center;
+    border-bottom: 2px solid #1a237e;
+    white-space: nowrap;
+    font-size: 14px;
+  }
+
+  tbody tr:nth-child(even) {
+    background-color: #fafafa;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 2px solid #e0e0e0;
+  }
 `;
 
 const TableHeader = styled.th`
-  background-color: #f1f3f9;
-  padding: 12px;
-  text-align: center;
-  border: 1px solid #e0e0e0;
-  font-weight: bold;
+  background-color: #f5f5f5;
+  font-weight: 600;
   color: #1a237e;
 `;
 
-const Td = styled.td`
-  padding: 10px;
-  border: 1px solid #ddd;
+const TableTitle = styled.h3`
+  font-family: 'Pretendard-Medium', sans-serif;
+  font-size: 16px;
+  color: #1a237e;
+  margin-bottom: 10px;
+`;
+
+const SubTableHeader = styled(TableHeader)`
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #1a237e;
+  font-size: 13px;
+`;
+
+const TableCell = styled.td`
+  color: #333;
+  font-family: 'Pretendard-Regular', sans-serif;
+  padding: 8px;
   text-align: center;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 14px;
 `;
 
 export default AttendanceSection;

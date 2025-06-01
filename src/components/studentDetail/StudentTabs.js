@@ -37,10 +37,9 @@ const StudentTabs = ({ activeTab, onTabChange }) => {
     { id: 'score', label: '성적' },
     { id: 'attendance', label: '출결' },
     { id: 'specialNotes', label: '특기사항' },
-    { id: 'volunteer', label: '봉사' },
-    { id: 'reading', label: '독서' },
     { id: 'counseling', label: '상담 내역' },
     { id: 'feedback', label: '피드백 내역' },
+    { id: 'report', label: '보고서 생성' },
   ];
 
   return (

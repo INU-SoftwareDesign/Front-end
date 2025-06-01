@@ -124,7 +124,6 @@ const Sidebar = () => {
     { path: '/', icon: <FaHome />, label: '메인 페이지' },
     { path: '/students', icon: <FaUserGraduate />, label: '학생부' },
     { path: '/grades', icon: <FaChartBar />, label: '성적 관리', roleRequired: 'teacher' },
-    { path: '/feedback', icon: <FaClipboardList />, label: '피드백' },
   ];
   
   // Add role-specific counseling menu item

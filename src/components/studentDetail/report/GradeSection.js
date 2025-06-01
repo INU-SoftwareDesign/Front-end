@@ -62,16 +62,16 @@ const GradeSection = () => {
     <Section>
       <Title>성적 현황</Title>
       <TableContainer>
-        <Table>
+        <GradeTable>
           <thead>
             <tr>
-              <Th rowSpan={2}>학년</Th>
-              <Th rowSpan={2}>학기</Th>
-              <Th colSpan={subjects.length}>교과별 점수</Th>
+              <TableHeader rowSpan={2}>학년</TableHeader>
+              <TableHeader rowSpan={2}>학기</TableHeader>
+              <TableHeader colSpan={subjects.length}>교과별 점수</TableHeader>
             </tr>
             <tr>
               {subjects.map(subject => (
-                <Th key={subject}>{subject}</Th>
+                <TableHeader key={subject}>{subject}</TableHeader>
               ))}
             </tr>
           </thead>
@@ -91,39 +91,50 @@ const GradeSection = () => {
               </tr>
             ))}
           </tbody>
-        </Table>
+        </GradeTable>
       </TableContainer>
     </Section>
   );
 };
 
 const Section = styled.section`
-  margin-bottom: 30px;
+  margin-bottom: 40px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  page-break-inside: avoid;
 `;
 
 const Title = styled.h2`
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 15px;
-  color: #333;
+  font-family: 'Pretendard-Bold', sans-serif;
+  font-size: 22px;
+  color: #1a237e;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #1a237e;
 `;
 
 const TableContainer = styled.div`
   overflow-x: auto;
 `;
 
-const Table = styled.table`
+const GradeTable = styled.table`
   width: 100%;
   border-collapse: collapse;
-  border: 1px solid #ddd;
+  margin-bottom: 20px;
+  background-color: #fff;
+  border-radius: 4px;
+  overflow: hidden;
 `;
 
-const Th = styled.th`
-  padding: 10px;
-  background-color: #f8f9fa;
-  border: 1px solid #ddd;
+const TableHeader = styled.th`
+  background-color: #f1f3f9;
+  padding: 12px;
   text-align: center;
-  font-weight: 500;
+  border: 1px solid #e0e0e0;
+  font-weight: bold;
+  color: #1a237e;
 `;
 
 const Td = styled.td`

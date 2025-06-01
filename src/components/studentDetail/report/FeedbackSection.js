@@ -65,9 +65,9 @@ const FeedbackSection = () => {
         <FeedbackCard key={index}>
           <CardHeader>
             <HeaderText>{feedback.year}학년도 {feedback.semester}학기</HeaderText>
-            <HeaderInfo>
+            <MetaInfo>
               작성일: {feedback.createdAt} | 작성교사: {feedback.teacherName}
-            </HeaderInfo>
+            </MetaInfo>
           </CardHeader>
           <CategoryGrid>
             <CategoryItem>
@@ -94,35 +94,49 @@ const FeedbackSection = () => {
 };
 
 const Section = styled.section`
-  margin-bottom: 30px;
+  margin-bottom: 40px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  page-break-inside: avoid;
 `;
 
 const Title = styled.h2`
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 15px;
-  color: #333;
+  font-family: 'Pretendard-Bold', sans-serif;
+  font-size: 22px;
+  color: #1a237e;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #1a237e;
 `;
 
 const FeedbackCard = styled.div`
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
   margin-bottom: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 `;
 
-const EmptyMessage = styled.div`
-  padding: 20px;
+const EmptyMessage = styled.p`
   text-align: center;
-  color: #666;
+  color: #78909c;
+  padding: 30px;
   background-color: #f8f9fa;
-  border: 1px solid #ddd;
   border-radius: 4px;
+  font-family: 'Pretendard-Medium', sans-serif;
 `;
 
 const CardHeader = styled.div`
-  padding: 15px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+  color: #1a237e;
 `;
 
 const HeaderText = styled.h3`
@@ -131,9 +145,17 @@ const HeaderText = styled.h3`
   margin: 0 0 5px 0;
 `;
 
-const HeaderInfo = styled.div`
+const MetaInfo = styled.span`
   font-size: 14px;
-  color: #666;
+  color: #455a64;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  & > span {
+    padding: 4px 8px;
+    background-color: #f1f3f9;
+    border-radius: 4px;
+  }
 `;
 
 const CategoryGrid = styled.div`
@@ -149,16 +171,26 @@ const CategoryItem = styled.div`
   padding: 10px;
 `;
 
-const CategoryTitle = styled.h4`
-  font-size: 14px;
-  font-weight: 500;
-  margin: 0 0 8px 0;
-  color: #555;
+const CategoryTitle = styled.h3`
+  font-family: 'Pretendard-Medium', sans-serif;
+  font-size: 16px;
+  color: #1a237e;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  &:before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    background-color: #1a237e;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
 `;
 
 const CategoryContent = styled.p`
   font-size: 14px;
-  margin: 0;
   white-space: pre-line;
 `;
 

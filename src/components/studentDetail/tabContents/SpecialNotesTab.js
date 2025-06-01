@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useUser } from '../../../contexts/UserContext';
 import styled from 'styled-components';
 import useUserStore from '../../../stores/useUserStore';
 import useSpecialNotesStore from '../../../stores/useSpecialNotesStore';
-import { useUser } from '../../../contexts/UserContext';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -283,20 +283,20 @@ const SpecialNotesTab = ({ student, studentUrlId, forceLoad, currentUser }) => {
     deleteSpecialNote 
   } = useSpecialNotesStore();
   
-  // Fetch special notes when component mounts or when studentUrlId changes
+  // Fetch special notes when component mounts or when student changes
   useEffect(() => {
-    if (studentUrlId) {
+    if (student?.studentId) {
       console.log('%c[SpecialNotesTab] fetchSpecialNotes 호출:', 'color: #e67e22; font-weight: bold;', {
-        studentUrlId,
+        studentId: student.studentId,
         forceLoad,
         'store user available': !!storeUser,
         'context user available': !!userContext?.currentUser,
         'merged user available': !!user,
         'user data': user
       });
-      fetchSpecialNotes(studentUrlId);
+      fetchSpecialNotes(student.studentId);
     }
-  }, [studentUrlId, fetchSpecialNotes, forceLoad, user]);
+  }, [student, fetchSpecialNotes, forceLoad, user]);
   
   // Log user permissions when component mounts or when user/student changes
   useEffect(() => {

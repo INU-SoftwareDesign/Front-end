@@ -61,16 +61,16 @@ const AttendanceSection = () => {
     <Section>
       <Title>출결 현황</Title>
       <TableContainer>
-        <Table>
+        <AttendanceTable>
           <thead>
             <tr>
-              <Th>학년도</Th>
-              <Th>수업일수</Th>
-              <Th>출석</Th>
-              <Th>결석</Th>
-              <Th>지각</Th>
-              <Th>조퇴</Th>
-              <Th>병결</Th>
+              <TableHeader>학년도</TableHeader>
+              <TableHeader>전체 수업일수</TableHeader>
+              <TableHeader>출석</TableHeader>
+              <TableHeader>결석</TableHeader>
+              <TableHeader>지각</TableHeader>
+              <TableHeader>조퇴</TableHeader>
+              <TableHeader>병결</TableHeader>
             </tr>
           </thead>
           <tbody>
@@ -86,48 +86,59 @@ const AttendanceSection = () => {
               </tr>
             ))}
           </tbody>
-        </Table>
+        </AttendanceTable>
       </TableContainer>
     </Section>
   );
 };
 
 const Section = styled.section`
-  margin-bottom: 30px;
+  margin-bottom: 40px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  page-break-inside: avoid;
 `;
 
-const EmptyMessage = styled.div`
-  padding: 20px;
+const EmptyMessage = styled.p`
   text-align: center;
-  color: #666;
+  color: #78909c;
+  padding: 30px;
   background-color: #f8f9fa;
-  border: 1px solid #ddd;
   border-radius: 4px;
+  font-family: 'Pretendard-Medium', sans-serif;
 `;
 
 const Title = styled.h2`
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 15px;
-  color: #333;
+  font-family: 'Pretendard-Bold', sans-serif;
+  font-size: 22px;
+  color: #1a237e;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #1a237e;
 `;
 
 const TableContainer = styled.div`
   overflow-x: auto;
 `;
 
-const Table = styled.table`
+const AttendanceTable = styled.table`
   width: 100%;
   border-collapse: collapse;
-  border: 1px solid #ddd;
+  margin-bottom: 20px;
+  background-color: #fff;
+  border-radius: 4px;
+  overflow: hidden;
 `;
 
-const Th = styled.th`
-  padding: 10px;
-  background-color: #f8f9fa;
-  border: 1px solid #ddd;
+const TableHeader = styled.th`
+  background-color: #f1f3f9;
+  padding: 12px;
   text-align: center;
-  font-weight: 500;
+  border: 1px solid #e0e0e0;
+  font-weight: bold;
+  color: #1a237e;
 `;
 
 const Td = styled.td`

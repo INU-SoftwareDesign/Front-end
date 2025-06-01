@@ -1,7 +1,9 @@
 import React, { useRef, useState, useEffect, forwardRef } from 'react';
 import styled from 'styled-components';
 import { useReactToPrint } from 'react-to-print';
+import { useParams } from 'react-router-dom';
 import { useReportStore } from '../../../stores/useReportStore';
+import { getStudentById } from '../../../api/studentApi';
 import PersonalInfo from '../report/PersonalInfo';
 import GradeSection from '../report/GradeSection';
 import AttendanceSection from '../report/AttendanceSection';
@@ -19,11 +21,27 @@ const PrintContent = forwardRef(({ reportData, currentPage }, ref) => (
 ));
 
 const ReportTab = () => {
+  const { id: studentId } = useParams();
   const componentRef = useRef(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const { currentPage, setCurrentPage, totalPages } = useReportStore();
-  const { reportData } = useReportStore();
+  const { currentPage, setCurrentPage, totalPages, reportData, setReportData, setError } = useReportStore();
+
+  useEffect(() => {
+    const fetchStudentData = async () => {
+      try {
+        const data = await getStudentById(studentId);
+        setReportData({ personalInfo: data });
+      } catch (error) {
+        console.error('Failed to fetch student data:', error);
+        setError('학생 정보를 불러오는데 실패했습니다.');
+      }
+    };
+
+    if (studentId) {
+      fetchStudentData();
+    }
+  }, [studentId, setReportData, setError]);
 
   // Debug: Monitor ref and data changes
   useEffect(() => {

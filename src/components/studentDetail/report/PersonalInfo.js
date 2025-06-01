@@ -1,146 +1,187 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import styled from 'styled-components';
-import { useReportStore } from '../../../stores/useReportStore';
-import { getStudentById } from '../../../api/studentApi';
-import { useParams } from 'react-router-dom';
 
-const PersonalInfo = () => {
-  const { studentId } = useParams();
-  const { reportData, setReportData, setError } = useReportStore();
+const PersonalInfo = ({ data }) => {
+  if (!data) return null;
 
-  useEffect(() => {
-    const fetchPersonalInfo = async () => {
-      try {
-        const data = await getStudentById(studentId);
-        setReportData({ personalInfo: data });
-      } catch (error) {
-        console.error('Failed to fetch personal info:', error);
-        setError('개인정보를 불러오는데 실패했습니다.');
-        // Fallback to dummy data
-        setReportData({
-          personalInfo: {
-            name: '홍길동',
-            studentNumber: '20230001',
-            grade: 1,
-            class: 3,
-            number: 15,
-            birthDate: '2008-05-15',
-            gender: '남',
-            address: '서울특별시 강남구 테헤란로 123',
-            phoneNumber: '010-1234-5678',
-            parentName: '홍부모',
-            parentPhone: '010-9876-5432',
-          }
-        });
-      }
-    };
-
-    if (!reportData.personalInfo) {
-      fetchPersonalInfo();
-    }
-  }, [studentId, reportData.personalInfo, setReportData, setError]);
-
-  if (!reportData.personalInfo) return null;
-
-  const info = reportData.personalInfo;
+  const info = data;
 
   return (
     <Section>
       <Title>학생 인적사항</Title>
       <InfoGrid>
-        <InfoRow>
-          <Label>이름</Label>
-          <Value>{info.name}</Value>
-          <Label>학번</Label>
-          <Value>{info.studentNumber}</Value>
-        </InfoRow>
-        <InfoRow>
-          <Label>학년/반/번호</Label>
-          <Value>{info.grade}학년 {info.class}반 {info.number}번</Value>
-          <Label>생년월일</Label>
-          <Value>{info.birthDate}</Value>
-        </InfoRow>
-        <InfoRow>
-          <Label>성별</Label>
-          <Value>{info.gender}</Value>
-          <Label>연락처</Label>
-          <Value>{info.phoneNumber}</Value>
-        </InfoRow>
-        <InfoRow>
-          <Label>주소</Label>
-          <Value colSpan={3}>{info.address}</Value>
-        </InfoRow>
-        <InfoRow>
-          <Label>보호자 성명</Label>
-          <Value>{info.parentName}</Value>
-          <Label>보호자 연락처</Label>
-          <Value>{info.parentPhone}</Value>
-        </InfoRow>
+        <tbody>
+          <InfoRow>
+            <Label>이름</Label>
+            <Value>{info.name}</Value>
+            <Label>학번</Label>
+            <Value>{info.studentId}</Value>
+          </InfoRow>
+          <InfoRow>
+            <Label>학년/반/번호</Label>
+            <Value>{info.grade}학년 {info.classNumber}반 {info.number}번</Value>
+            <Label>생년월일</Label>
+            <Value>{info.birthDate}</Value>
+          </InfoRow>
+          <InfoRow>
+            <Label>주소</Label>
+            <Value colSpan="3">{info.address}</Value>
+          </InfoRow>
+          <InfoRow>
+            <Label>보호자</Label>
+            <Value>부: {info.fatherName}</Value>
+            <Label>보호자</Label>
+            <Value>모: {info.motherName}</Value>
+          </InfoRow>
+        </tbody>
       </InfoGrid>
+
+      <SubTitle>학적 이력</SubTitle>
+      <TableContainer>
+        <HistoryTable>
+          <thead>
+            <tr>
+              <TableHeader width="15%">학년</TableHeader>
+              <TableHeader width="15%">반</TableHeader>
+              <TableHeader width="15%">번호</TableHeader>
+              <TableHeader width="55%">담임교사</TableHeader>
+            </tr>
+          </thead>
+          <tbody>
+            {info.history?.map((record, index) => (
+              <tr key={index}>
+                <TableCell>{record.grade}학년</TableCell>
+                <TableCell>{record.classNumber}반</TableCell>
+                <TableCell>{record.number}번</TableCell>
+                <TableCell>{record.homeroomTeacher}</TableCell>
+              </tr>
+            ))}  
+          </tbody>
+        </HistoryTable>
+      </TableContainer>
+
+      <SubTitle>학적 기록</SubTitle>
+      <RecordsList>
+        {info.academicRecords?.map((record, index) => (
+          <RecordItem key={index}>{record}</RecordItem>
+        ))}  
+      </RecordsList>
     </Section>
   );
 };
 
 const Section = styled.section`
-  margin-bottom: 30px;
+  margin-bottom: 40px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  page-break-inside: avoid;
 `;
 
-const InfoGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
-  border: 1px solid #ddd;
+const InfoGrid = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 30px;
+  th, td {
+    border: 1px solid #e0e0e0;
+    padding: 12px;
+  }
+`;
+
+const InfoRow = styled.tr`
+  &:nth-child(even) {
+    background-color: #fafafa;
+  }
+`;
+
+const Label = styled.th`
+  width: 120px;
+  background-color: #f5f5f5;
+  font-weight: 600;
+  color: #1a237e;
+  text-align: left;
+`;
+
+const Title = styled.h2`
+  font-family: 'Pretendard-Bold', sans-serif;
+  font-size: 22px;
+  color: #1a237e;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #1a237e;
+`;
+
+const SubTitle = styled.h3`
+  font-family: 'Pretendard-Bold', sans-serif;
+  font-size: 18px;
+  color: #1a237e;
+  margin: 30px 0 15px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #1a237e;
+`;
+
+const Value = styled.td`
+  color: #333;
+  font-weight: 400;
+  ${props => props.colSpan && `colspan: ${props.colSpan};`}
+`;
+
+const TableContainer = styled.div`
+  margin-bottom: 30px;
+  border: 1px solid #e0e0e0;
   border-radius: 4px;
   overflow: hidden;
 `;
 
-const InfoRow = styled.div`
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  border-bottom: 1px solid #ddd;
-  &:last-child {
+const HistoryTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  th, td {
+    padding: 12px 16px;
+    border: none;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  tr:last-child td {
     border-bottom: none;
   }
 `;
 
-const Label = styled.div`
-  padding: 10px;
-  background-color: #f8f9fa;
-  font-weight: 500;
-  border-right: 1px solid #ddd;
+const TableHeader = styled.th`
+  background-color: #f5f5f5;
+  font-weight: 600;
+  color: #1a237e;
+  text-align: left;
+  white-space: nowrap;
+  width: ${props => props.width || 'auto'};
 `;
 
-const Title = styled.h2`
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 15px;
+const TableCell = styled.td`
   color: #333;
-\`;
+  font-weight: 400;
+`;
 
-const InfoGrid = styled.div\`
-  border: 1px solid #ddd;
+const RecordsList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border: 1px solid #e0e0e0;
   border-radius: 4px;
-\`;
+  overflow: hidden;
+`;
 
-const InfoRow = styled.div\`
-  display: grid;
-  grid-template-columns: 100px 1fr 100px 1fr;
-  border-bottom: 1px solid #ddd;
+const RecordItem = styled.li`
+  padding: 12px 16px;
+  color: #333;
+  border-bottom: 1px solid #e0e0e0;
+  line-height: 1.5;
   &:last-child {
     border-bottom: none;
   }
-\`;
-
-const Label = styled.div\`
-  padding: 10px;
-  background-color: #f8f9fa;
-  font-weight: 500;
-  border-right: 1px solid #ddd;
-`;
-
-const Value = styled.div`
-  padding: 10px;
-  grid-column: ${props => props.colSpan ? 'span ' + props.colSpan : 'span 1'};
+  &:nth-child(even) {
+    background-color: #fafafa;
+  }
 `;
 
 export default PersonalInfo;

@@ -1,92 +1,105 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { useReportStore } from '../../../stores/useReportStore';
 import specialNotesApi from '../../../api/specialNotesApi';
-import { useParams } from 'react-router-dom';
 
-const SpecialNoteSection = () => {
-  const { studentId } = useParams();
-  const { reportData, setReportData, setError } = useReportStore();
+const SpecialNoteSection = ({ studentId }) => {
+  const [specialNotes, setSpecialNotes] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    // studentId 형식 로그
+    console.log('%c[SpecialNoteSection] studentId format:', 'color: #4CAF50; font-weight: bold;', {
+      studentId,
+      type: typeof studentId,
+      length: studentId?.length
+    });
+    
     const fetchSpecialNotes = async () => {
       try {
-        const { data } = await specialNotesApi.getStudentSpecialNotes(studentId);
-        setReportData({ specialNotes: data });
-      } catch (error) {
-        console.error('Failed to fetch special notes:', error);
-        setError('특기사항을 불러오는데 실패했습니다.');
-        // Fallback to dummy data
-        setReportData({
-          specialNotes: {
-            notes: [
-              {
-                year: 2023,
-                content: '학급 회장으로서 리더십을 발휘하여 학급 운영에 크게 기여함. 과학 경시대회에서 우수한 성적을 거둠.',
-                createdAt: '2023-12-20',
-                teacherName: '김교사'
-              }
-            ]
+        setIsLoading(true);
+        
+        // studentId가 원하는 형식(20250100)인지 확인
+        // 만약 100과 같은 형태라면 20250000 형태로 변환
+        let formattedId = studentId;
+        if (studentId && studentId.length <= 4) {
+          // 숫자만 포함하는지 확인
+          if (/^\d+$/.test(studentId)) {
+            formattedId = `2025${studentId.padStart(4, '0')}`;
+            console.log('%c[SpecialNoteSection] Formatted studentId:', 'color: #4CAF50; font-weight: bold;', formattedId);
           }
-        });
+        }
+        
+        const response = await specialNotesApi.getStudentSpecialNotes(formattedId);
+        // 학년 기준 오름차순 정렬
+        const sortedNotes = response.data.data.sort((a, b) => a.grade - b.grade);
+        setSpecialNotes(sortedNotes);
+      } catch (err) {
+        console.error('Failed to fetch special notes:', err);
+        setError('특기사항을 불러오는데 실패했습니다.');
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    if (!reportData.specialNotes) {
+    if (studentId) {
       fetchSpecialNotes();
     }
-  }, [studentId, reportData.specialNotes, setReportData, setError]);
+  }, [studentId]);
 
-  // 데이터가 없거나 data 배열이 없는 경우 처리
-  if (!reportData.specialNotes || !reportData.specialNotes.data) {
+  if (isLoading) {
     return (
       <Section>
         <Title>특기사항</Title>
-        <EmptyMessage>특기사항 정보가 없습니다.</EmptyMessage>
+        <LoadingMessage>불러오는 중...</LoadingMessage>
       </Section>
     );
   }
 
-  // data가 배열이 아닌 경우 처리
-  const notes = Array.isArray(reportData.specialNotes.data)
-    ? reportData.specialNotes.data
-    : [];
+  if (error) {
+    return (
+      <Section>
+        <Title>특기사항</Title>
+        <ErrorMessage>{error}</ErrorMessage>
+      </Section>
+    );
+  }
+
+  if (!specialNotes.length) {
+    return (
+      <Section>
+        <Title>특기사항</Title>
+        <EmptyMessage>등록된 특기사항이 없습니다.</EmptyMessage>
+      </Section>
+    );
+  }
 
   return (
     <Section>
       <Title>특기사항</Title>
       <TableContainer>
-        <Table>
+        <NotesTable>
           <thead>
             <tr>
-              <Th>학년도</Th>
-              <Th>특기사항</Th>
-              <Th>작성일</Th>
-              <Th>작성교사</Th>
+              <TableHeader>학년</TableHeader>
+              <TableHeader>특기 또는 흥미</TableHeader>
+              <TableHeader>진로희망(학생)</TableHeader>
+              <TableHeader>진로희망(학부모)</TableHeader>
+              <TableHeader>특기사항</TableHeader>
             </tr>
           </thead>
           <tbody>
-            {notes.map((note, index) => (
-              <tr key={index}>
-                <Td>{note.year ?? '-'}</Td>
-                <ContentTd>
-                  <NoteCard>
-                    <CardHeader>
-                      <h3>{note.year}학년도</h3>
-                      <MetaInfo>
-                        <span>작성일: {note.createdAt}</span>
-                        <span>작성교사: {note.teacherName}</span>
-                      </MetaInfo>
-                    </CardHeader>
-                    <CardContent>{note.content}</CardContent>
-                  </NoteCard>
-                </ContentTd>
-                <Td>{note.createdAt ?? '-'}</Td>
-                <Td>{note.teacherName ?? '-'}</Td>
+            {specialNotes.map((note) => (
+              <tr key={note.id}>
+                <TableCell>{note.grade}학년</TableCell>
+                <TableCell>{note.specialTalent}</TableCell>
+                <TableCell>{note.careerAspiration.student}</TableCell>
+                <TableCell>{note.careerAspiration.parent}</TableCell>
+                <TableCell className="note-content">{note.note}</TableCell>
               </tr>
             ))}
           </tbody>
-        </Table>
+        </NotesTable>
       </TableContainer>
     </Section>
   );
@@ -101,15 +114,6 @@ const Section = styled.section`
   page-break-inside: avoid;
 `;
 
-const EmptyMessage = styled.p`
-  text-align: center;
-  color: #78909c;
-  padding: 30px;
-  background-color: #f8f9fa;
-  border-radius: 4px;
-  font-family: 'Pretendard-Medium', sans-serif;
-`;
-
 const Title = styled.h2`
   font-family: 'Pretendard-Bold', sans-serif;
   font-size: 22px;
@@ -120,76 +124,100 @@ const Title = styled.h2`
 `;
 
 const TableContainer = styled.div`
+  width: 100%;
+  max-width: 1200px;
   overflow-x: auto;
+  margin-top: 15px;
 `;
 
-const NoteCard = styled.div`
-  background-color: #fff;
+const NotesTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+  table-layout: fixed;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-`;
+  
+  th, td {
+    padding: 12px;
+    text-align: center;
+    border: 1px solid #e0e0e0;
+  }
 
-const MetaInfo = styled.div`
-  font-size: 14px;
-  color: #455a64;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  & > span {
-    padding: 4px 8px;
-    background-color: #f1f3f9;
-    border-radius: 4px;
+  th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+    color: #1a237e;
+    white-space: nowrap;
+  }
+  
+  /* 열 너비 조정 */
+  th:nth-child(1), td:nth-child(1) {
+    width: 12%; /* 학년 칸 너비 더 증가 */
+  }
+  
+  th:nth-child(2), td:nth-child(2),
+  th:nth-child(3), td:nth-child(3),
+  th:nth-child(4), td:nth-child(4) {
+    width: 19%; /* 중간 칸들 너비 약간 증가 */
+  }
+  
+  th:nth-child(5), td:nth-child(5) {
+    width: 31%; /* 특기사항 칸 너비 더 감소 */
+  }
+
+  td.note-content {
+    text-align: left;
+    white-space: pre-line;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  tbody tr:nth-child(even) {
+    background-color: #fafafa;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 2px solid #e0e0e0;
   }
 `;
 
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  border: 1px solid #ddd;
-`;
-
-const Th = styled.th`
-  padding: 10px;
-  background-color: #f8f9fa;
-  border: 1px solid #ddd;
-  text-align: center;
-  font-weight: 500;
-`;
-
-const Td = styled.td`
-  padding: 10px;
-  border: 1px solid #ddd;
-  text-align: center;
-`;
-
-const ContentTd = styled(Td)`
-  text-align: left;
-  white-space: pre-line;
-`;
-
-const CardHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e0e0e0;
+const TableHeader = styled.th`
+  background-color: #f5f5f5;
+  font-weight: 600;
   color: #1a237e;
 `;
 
-const CardContent = styled.p`
+const TableCell = styled.td`
+  color: #333;
   font-family: 'Pretendard-Regular', sans-serif;
-  font-size: 14px;
-  color: #455a64;
-  line-height: 1.6;
-  white-space: pre-line;
-  padding: 8px 12px;
+`;
+
+const LoadingMessage = styled.div`
+  text-align: center;
+  padding: 30px;
+  color: #666;
   background-color: #f8f9fa;
   border-radius: 4px;
-  margin: 0;
+  font-family: 'Pretendard-Medium', sans-serif;
+`;
+
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 30px;
+  color: #e74c3c;
+  background-color: #fef5f5;
+  border-radius: 4px;
+  font-family: 'Pretendard-Medium', sans-serif;
+`;
+
+const EmptyMessage = styled.div`
+  text-align: center;
+  padding: 30px;
+  color: #78909c;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  font-family: 'Pretendard-Medium', sans-serif;
 `;
 
 export default SpecialNoteSection;

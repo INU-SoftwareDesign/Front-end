@@ -1,50 +1,82 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { useReportStore } from '../../../stores/useReportStore';
 import feedbackApi from '../../../api/feedbackApi';
-import { useParams } from 'react-router-dom';
 
-const FeedbackSection = () => {
-  const { studentId } = useParams();
-  const { reportData, setReportData, setError } = useReportStore();
+const FeedbackSection = ({ studentId }) => {
+  const [feedbackData, setFeedbackData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    // studentId 형식 로그
+    console.log('%c[FeedbackSection] studentId format:', 'color: #2196F3; font-weight: bold;', {
+      studentId,
+      type: typeof studentId,
+      length: studentId?.length
+    });
+    
     const fetchFeedback = async () => {
       try {
-        const { data } = await feedbackApi.getStudentFeedbacks(studentId);
-        setReportData({ feedback: data });
-      } catch (error) {
-        console.error('Failed to fetch feedback:', error);
-        setError('피드백 정보를 불러오는데 실패했습니다.');
-        // Fallback to dummy data
-        setReportData({
-          feedback: {
-            feedbacks: [
-              {
-                year: 2023,
-                semester: 1,
-                categories: {
-                  academic: '수업 참여도가 높고 과제 제출이 성실함',
-                  behavior: '친구들과 원만한 관계를 유지하며 교우관계가 좋음',
-                  attendance: '개근',
-                  attitude: '예의 바르고 성실한 태도로 수업에 임함'
-                },
-                createdAt: '2023-07-20',
-                teacherName: '이교사'
-              }
-            ]
+        setIsLoading(true);
+        
+        // studentId가 원하는 형식(20250100)인지 확인
+        // 만약 100과 같은 형태라면 20250100 형태로 변환
+        let formattedId = studentId;
+        if (studentId && studentId.length <= 4) {
+          // 숫자만 포함하는지 확인
+          if (/^\d+$/.test(studentId)) {
+            formattedId = `2025${studentId.padStart(4, '0')}`;
+            console.log('%c[FeedbackSection] Formatted studentId:', 'color: #2196F3; font-weight: bold;', formattedId);
           }
-        });
+        }
+        
+        const response = await feedbackApi.getStudentFeedbacks(formattedId);
+        
+        // API 응답 데이터 확인 및 정렬
+        if (response?.data?.success && Array.isArray(response.data.data)) {
+          // 학년 기준 오름차순 정렬
+          const sortedData = response.data.data.sort((a, b) => {
+            return Number(a.grade) - Number(b.grade);
+          });
+          setFeedbackData(sortedData);
+        } else {
+          setError('피드백 데이터 형식이 올바르지 않습니다.');
+        }
+      } catch (err) {
+        console.error('Failed to fetch feedback data:', err);
+        setError('피드백 정보를 불러오는데 실패했습니다.');
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    if (!reportData.feedback) {
+    if (studentId) {
       fetchFeedback();
     }
-  }, [studentId, reportData.feedback, setReportData, setError]);
+  }, [studentId]);
 
-  // 데이터가 없거나 feedbacks 배열이 없는 경우 처리
-  if (!reportData.feedback || !reportData.feedback.feedbacks) {
+  // 로딩 중인 경우
+  if (isLoading) {
+    return (
+      <Section>
+        <Title>담임교사 종합의견</Title>
+        <LoadingMessage>피드백 정보를 불러오는 중입니다...</LoadingMessage>
+      </Section>
+    );
+  }
+
+  // 에러가 발생한 경우
+  if (error) {
+    return (
+      <Section>
+        <Title>담임교사 종합의견</Title>
+        <ErrorMessage>{error}</ErrorMessage>
+      </Section>
+    );
+  }
+
+  // 데이터가 없는 경우
+  if (!feedbackData || feedbackData.length === 0) {
     return (
       <Section>
         <Title>담임교사 종합의견</Title>
@@ -53,40 +85,47 @@ const FeedbackSection = () => {
     );
   }
 
-  // feedbacks가 배열이 아닌 경우 처리
-  const feedbacks = Array.isArray(reportData.feedback.feedbacks) 
-    ? reportData.feedback.feedbacks 
-    : [];
+  // 카테고리 한글 매핑
+  const categoryMapping = {
+    academic: '학업',
+    behavior: '행동',
+    attendance: '출석',
+    attitude: '태도'
+  };
 
   return (
     <Section>
       <Title>담임교사 종합의견</Title>
-      {feedbacks.map((feedback, index) => (
+      {feedbackData.map((gradeData, index) => (
         <FeedbackCard key={index}>
           <CardHeader>
-            <HeaderText>{feedback.year}학년도 {feedback.semester}학기</HeaderText>
+            <HeaderText>{gradeData.grade}학년 {gradeData.classNumber}반</HeaderText>
             <MetaInfo>
-              작성일: {feedback.createdAt} | 작성교사: {feedback.teacherName}
+              담당교사: {gradeData.teacherName} | 작성일: {new Date(gradeData.createdAt).toLocaleDateString('ko-KR')}
             </MetaInfo>
           </CardHeader>
-          <CategoryGrid>
-            <CategoryItem>
-              <CategoryTitle>학업성취도</CategoryTitle>
-              <CategoryContent>{feedback.categories.academic}</CategoryContent>
-            </CategoryItem>
-            <CategoryItem>
-              <CategoryTitle>행동발달</CategoryTitle>
-              <CategoryContent>{feedback.categories.behavior}</CategoryContent>
-            </CategoryItem>
-            <CategoryItem>
-              <CategoryTitle>출결상황</CategoryTitle>
-              <CategoryContent>{feedback.categories.attendance}</CategoryContent>
-            </CategoryItem>
-            <CategoryItem>
-              <CategoryTitle>학습태도</CategoryTitle>
-              <CategoryContent>{feedback.categories.attitude}</CategoryContent>
-            </CategoryItem>
-          </CategoryGrid>
+          
+          <FeedbackTable>
+            <thead>
+              <tr>
+                <TableHeader>카테고리</TableHeader>
+                <TableHeader>내용</TableHeader>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(categoryMapping).map(([category, label]) => {
+                // 해당 카테고리의 피드백 찾기
+                const feedback = gradeData.feedbacks.find(f => f.category === category);
+                
+                return (
+                  <tr key={category}>
+                    <CategoryCell>{label}</CategoryCell>
+                    <ContentCell>{feedback ? feedback.content : '-'}</ContentCell>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </FeedbackTable>
         </FeedbackCard>
       ))}
     </Section>
@@ -120,10 +159,28 @@ const FeedbackCard = styled.div`
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 `;
 
-const EmptyMessage = styled.p`
+const LoadingMessage = styled.div`
   text-align: center;
-  color: #78909c;
   padding: 30px;
+  color: #666;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  font-family: 'Pretendard-Medium', sans-serif;
+`;
+
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 30px;
+  color: #e74c3c;
+  background-color: #fef5f5;
+  border-radius: 4px;
+  font-family: 'Pretendard-Medium', sans-serif;
+`;
+
+const EmptyMessage = styled.div`
+  text-align: center;
+  padding: 30px;
+  color: #78909c;
   background-color: #f8f9fa;
   border-radius: 4px;
   font-family: 'Pretendard-Medium', sans-serif;
@@ -158,40 +215,42 @@ const MetaInfo = styled.span`
   }
 `;
 
-const CategoryGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
-  padding: 15px;
-`;
-
-const CategoryItem = styled.div`
-  border: 1px solid #eee;
-  border-radius: 4px;
-  padding: 10px;
-`;
-
-const CategoryTitle = styled.h3`
-  font-family: 'Pretendard-Medium', sans-serif;
-  font-size: 16px;
-  color: #1a237e;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  &:before {
-    content: '';
-    display: inline-block;
-    width: 4px;
-    height: 4px;
-    background-color: #1a237e;
-    border-radius: 50%;
-    margin-right: 8px;
+const FeedbackTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  
+  th, td {
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+  }
+  
+  th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+    color: #1a237e;
   }
 `;
 
-const CategoryContent = styled.p`
-  font-size: 14px;
+const TableHeader = styled.th`
+  text-align: center;
+  white-space: nowrap;
+`;
+
+const CategoryCell = styled.td`
+  width: 15%;
+  text-align: center;
+  background-color: #f8f9fa;
+  font-weight: 500;
+  color: #1a237e;
+`;
+
+const ContentCell = styled.td`
+  text-align: left;
   white-space: pre-line;
+  font-size: 14px;
 `;
 
 export default FeedbackSection;

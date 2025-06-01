@@ -7,7 +7,7 @@ import apiClient from './apiClient';
 const feedbackApi = {
   /**
    * Get feedback records for a specific student
-   * @param {number} studentId - The student ID
+   * @param {string} studentId - The student ID
    * @returns {Promise} - Promise with feedback records
    */
   getStudentFeedbacks: (studentId) => {
@@ -19,6 +19,66 @@ const feedbackApi = {
       })
       .catch(error => {
         console.warn('[FeedbackAPI] API call failed, using dummy data:', error);
+        
+        // 더미 데이터 반환
+        const dummyData = {
+          data: {
+            success: true,
+            data: [
+              {
+                id: 101,
+                studentId: 20250001,
+                grade: "1",
+                classNumber: "3",
+                teacherId: 5,
+                teacherName: "김선생",
+                createdAt: "2025-04-10T09:30:00",
+                updatedAt: "2025-04-16T10:15:00",
+                feedbacks: [
+                  {
+                    id: 1,
+                    category: "academic",
+                    content: "수학 과목에서 지속적인 향상을 보이고 있으며, 특히 방정식 풀이에 탁월한 능력을 보여줍니다. 다만, 기하학 부분에서는 조금 더 연습이 필요합니다."
+                  },
+                  {
+                    id: 2,
+                    category: "behavior",
+                    content: "수업 시간에 적극적으로 참여하고 발표를 잘합니다. 친구들과의 관계도 원만하며 협동심이 뛰어납니다."
+                  },
+                  {
+                    id: 5,
+                    category: "attitude",
+                    content: "항상 긍정적인 태도로 학교생활에 임하고 있습니다. 어려운 과제도 포기하지 않고 끝까지 해결하려는 의지가 강합니다."
+                  }
+                ]
+              },
+              {
+                id: 102,
+                studentId: 20250001,
+                grade: "2",
+                classNumber: "1",
+                teacherId: 8,
+                teacherName: "박선생",
+                createdAt: "2025-06-10T15:45:00",
+                updatedAt: "2025-06-10T15:45:00",
+                feedbacks: [
+                  {
+                    id: 3,
+                    category: "academic",
+                    content: "2학년 학업 성취도가 매우 우수합니다. 특히 영어와 과학 과목에서 두각을 나타내고 있습니다."
+                  },
+                  {
+                    id: 4,
+                    category: "attendance",
+                    content: "출석 상황이 매우 양호합니다. 지각이나 결석 없이 성실하게 등교하고 있습니다."
+                  }
+                ]
+              }
+            ]
+          }
+        };
+        
+        return Promise.resolve(dummyData);
         
         // Return dummy data if API call fails
         return {

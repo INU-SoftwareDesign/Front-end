@@ -16,7 +16,7 @@ const PrintContent = forwardRef(({ reportData, currentPage, studentId }, ref) =>
     <GradeSection data={reportData?.grades} studentId={studentId} />
     <AttendanceSection data={reportData?.attendance} studentId={studentId} />
     <SpecialNoteSection studentId={studentId} />
-    <FeedbackSection data={reportData?.feedback} />
+    <FeedbackSection studentId={studentId} />
   </PrintableContent>
 ));
 

@@ -9,10 +9,9 @@ import PersonalInfoTab from '../../components/studentDetail/tabContents/Personal
 import ScoreTab from '../../components/studentDetail/tabContents/ScoreTab';
 import AttendanceTab from '../../components/studentDetail/tabContents/AttendanceTab';
 import SpecialNotesTab from '../../components/studentDetail/tabContents/SpecialNotesTab';
-import VolunteerTab from '../../components/studentDetail/tabContents/VolunteerTab';
-import ReadingTab from '../../components/studentDetail/tabContents/ReadingTab';
 import CounselingTab from '../../components/studentDetail/tabContents/CounselingTab';
 import FeedbackTab from '../../components/studentDetail/tabContents/FeedbackTab';
+import ReportTab from '../../components/studentDetail/tabContents/ReportTab';
 
 const PageContainer = styled.div`
   padding: 24px;
@@ -193,10 +192,8 @@ const StudentDetailPage = () => {
           forceLoad={specialNotesTabLoaded} 
           currentUser={currentUser} 
         />;
-      case 'volunteer':
-        return <VolunteerTab student={student} />;
-      case 'reading':
-        return <ReadingTab student={student} />;
+      case 'report':
+        return <ReportTab studentId={student?.studentId} studentUrlId={id} />;
       case 'counseling':
         console.log('CounselingTab 렌더링 전 데이터:', { urlId: id, studentId: student?.studentId, counselingTabLoaded });
         return <CounselingTab student={student} studentUrlId={id} forceLoad={counselingTabLoaded} currentUser={currentUser} />;

@@ -82,6 +82,7 @@ const StudentDetailPage = () => {
   const [counselingTabLoaded, setCounselingTabLoaded] = useState(false);
   const [attendanceTabLoaded, setAttendanceTabLoaded] = useState(false);
   const [feedbackTabLoaded, setFeedbackTabLoaded] = useState(false);
+  const [specialNotesTabLoaded, setSpecialNotesTabLoaded] = useState(false);
   
   // Get current user from store
   const currentUser = useUserStore(state => state.currentUser);
@@ -138,6 +139,13 @@ const StudentDetailPage = () => {
       setFeedbackTabLoaded(prev => !prev);
       console.log('피드백 탭 클릭됨, API 호출 트리거');
     }
+    
+    // 특기사항 탭을 클릭했을 때 로드 상태 업데이트
+    if (tabId === 'specialNotes') {
+      // 현재 값의 반대로 설정하여 매번 변경되도록 함
+      setSpecialNotesTabLoaded(prev => !prev);
+      console.log('특기사항 탭 클릭됨, API 호출 트리거');
+    }
   };
 
   // 탭 콘텐츠 렌더링 전에 디버깅 로그 추가
@@ -147,7 +155,10 @@ const StudentDetailPage = () => {
       activeTab, 
       studentId: student?.studentId, 
       scoreTabLoaded,
-      counselingTabLoaded
+      counselingTabLoaded,
+      attendanceTabLoaded,
+      feedbackTabLoaded,
+      specialNotesTabLoaded
     });
     
     switch (activeTab) {
@@ -170,7 +181,18 @@ const StudentDetailPage = () => {
           studentUrlId={id} // URL에서 가져온 학생 ID 전달
         />;
       case 'specialNotes':
-        return <SpecialNotesTab student={student} />;
+        console.log('SpecialNotesTab 렌더링 전 데이터:', { 
+          urlId: id, 
+          studentId: student?.studentId, 
+          specialNotesTabLoaded,
+          currentUser: currentUser
+        });
+        return <SpecialNotesTab 
+          student={student} 
+          studentUrlId={id} 
+          forceLoad={specialNotesTabLoaded} 
+          currentUser={currentUser} 
+        />;
       case 'volunteer':
         return <VolunteerTab student={student} />;
       case 'reading':

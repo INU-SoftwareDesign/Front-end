@@ -10,7 +10,7 @@ import AttendanceSection from '../report/AttendanceSection';
 import SpecialNoteSection from '../report/SpecialNoteSection';
 import FeedbackSection from '../report/FeedbackSection';
 
-const PrintContent = forwardRef(({ reportData, currentPage, studentId }, ref) => (
+const PrintContent = forwardRef(({ reportData, studentId }, ref) => (
   <PrintableContent ref={ref}>
     <PersonalInfo data={reportData?.personalInfo} />
     <GradeSection data={reportData?.grades} studentId={studentId} />
@@ -25,7 +25,7 @@ const ReportTab = () => {
   const componentRef = useRef(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const { currentPage, setCurrentPage, totalPages, reportData, setReportData, setError } = useReportStore();
+  const { reportData, setReportData, setError } = useReportStore();
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -155,32 +155,9 @@ const ReportTab = () => {
     handlePrint();
   };
 
-  const handlePageChange = (direction) => {
-    if (direction === 'next' && currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    } else if (direction === 'prev' && currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
   return (
     <Container>
       <ControlPanel>
-        <PageNavigation>
-          <NavButton 
-            onClick={() => handlePageChange('prev')} 
-            disabled={currentPage === 1}
-          >
-            이전 페이지
-          </NavButton>
-          <PageInfo>{currentPage} / {totalPages}</PageInfo>
-          <NavButton 
-            onClick={() => handlePageChange('next')} 
-            disabled={currentPage === totalPages}
-          >
-            다음 페이지
-          </NavButton>
-        </PageNavigation>
         <PrintButton 
           onClick={onPrintClick}
           disabled={!isReady || isPrinting}
@@ -190,7 +167,7 @@ const ReportTab = () => {
       </ControlPanel>
 
       <ReportContainer>
-        <PrintContent ref={componentRef} reportData={reportData} currentPage={currentPage} studentId={studentId} />
+        <PrintContent ref={componentRef} reportData={reportData} studentId={studentId} />
       </ReportContainer>
     </Container>
   );
@@ -212,7 +189,7 @@ const ReportContainer = styled.div`
 const PrintableContent = styled.div`
   width: 210mm;
   min-height: 297mm;
-  padding: 20mm;
+  padding: 20mm 10mm;
   margin: 10mm auto;
   border: 1px solid #d3d3d3;
   border-radius: 5px;
@@ -234,7 +211,7 @@ const PrintableContent = styled.div`
     width: 210mm;
     height: auto; /* 자동 높이 설정 */
     margin: 0;
-    padding: 20mm;
+    padding: 20mm 10mm;
     border: none;
     border-radius: 0;
     box-shadow: none;
@@ -242,43 +219,17 @@ const PrintableContent = styled.div`
 
   @page {
     size: A4;
-    margin: 20mm; /* 모든 페이지에 동일한 여백 적용 */
+    margin: 20mm 10mm; /* 좌우 여백 초안 */
   }
 `;
 
-
-
 const ControlPanel = styled.div`
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   padding: 10px;
   background-color: #f5f5f5;
   border-radius: 5px;
-`;
-
-const PageNavigation = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-`;
-
-const NavButton = styled.button`
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  background-color: #007bff;
-  color: white;
-  cursor: pointer;
-
-  &:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
-  }
-
-  &:hover:not(:disabled) {
-    background-color: #0056b3;
-  }
 `;
 
 const PrintButton = styled.button`

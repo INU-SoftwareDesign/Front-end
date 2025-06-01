@@ -134,7 +134,7 @@ const FeedbackSection = ({ studentId }) => {
 
 const Section = styled.section`
   margin-bottom: 40px;
-  padding: 20px;
+  padding: 20px 0;
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -145,6 +145,7 @@ const Section = styled.section`
   @media print {
     margin-bottom: 15mm;
     box-shadow: none;
+    padding: 0;
   }
 `;
 

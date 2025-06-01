@@ -107,7 +107,7 @@ const SpecialNoteSection = ({ studentId }) => {
 
 const Section = styled.section`
   margin-bottom: 40px;
-  padding: 20px;
+  padding: 20px 0;
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -118,6 +118,7 @@ const Section = styled.section`
   @media print {
     margin-bottom: 15mm;
     box-shadow: none;
+    padding: 0;
   }
 `;
 
@@ -132,7 +133,6 @@ const Title = styled.h2`
 
 const TableContainer = styled.div`
   width: 100%;
-  max-width: 1200px;
   overflow-x: auto;
   margin-top: 20px;
   page-break-inside: avoid;

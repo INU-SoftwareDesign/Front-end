@@ -12,7 +12,7 @@ const feedbackApi = {
    */
   getStudentFeedbacks: (studentId) => {
     console.log('[FeedbackAPI] Fetching feedbacks for studentId:', studentId);
-    return apiClient.get(`/feedbacks/${studentId}`)
+    return apiClient.get(`/feedbacks/students/${studentId}`)
       .then(response => {
         console.log('[FeedbackAPI] Received feedbacks:', response.data);
         return response;
@@ -138,7 +138,8 @@ const feedbackApi = {
    * @returns {Promise} - Promise with updated feedback
    */
   updateFeedback: (feedbackId, feedbackData) => {
-    console.log('[FeedbackAPI] Updating feedback:', feedbackId, 'with data:', feedbackData);
+    console.log('[FeedbackAPI] Updating feedback:', feedbackId);
+    console.log('[FeedbackAPI] Request body:', JSON.stringify(feedbackData, null, 2));
     return apiClient.patch(`/feedbacks/${feedbackId}`, feedbackData)
       .then(response => {
         console.log('[FeedbackAPI] Updated feedback response:', response.data);

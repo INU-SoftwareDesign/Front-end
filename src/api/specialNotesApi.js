@@ -12,7 +12,7 @@ const specialNotesApi = {
    */
   getStudentSpecialNotes: (studentId) => {
     console.log('%c[SpecialNotesAPI] Fetching special notes for studentId:', 'color: #1D4EB0; font-weight: bold;', studentId);
-    return apiClient.get(`/specialnotes/${studentId}`)
+    return apiClient.get(`/specialnotes/students/${studentId}`)
       .then(response => {
         console.log('%c[SpecialNotesAPI] Received special notes:', 'color: #1D4EB0; font-weight: bold;', response.data);
         return response;

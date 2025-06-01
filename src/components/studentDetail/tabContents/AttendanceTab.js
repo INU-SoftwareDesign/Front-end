@@ -113,6 +113,27 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
     studentId: ''
   });
   
+  const handleModalClose = () => {
+    setModalOpen(false);
+    setModalData({
+      attendanceType: '',
+      reasonType: '',
+      details: [],
+      grade: '',
+      canEdit: false,
+      studentId: ''
+    });
+  };
+
+  // 모달에서 데이터가 저장된 후 호출되는 함수
+  const handleModalSave = async (savedData) => {
+    console.log('출결 데이터 저장 완료:', savedData);
+    // 데이터가 성공적으로 저장되었으면 출결 데이터를 새로고침
+    if (savedData.response) {
+      await fetchAttendanceData();
+    }
+  };
+  
   // Load attendance data
   const fetchAttendanceData = async () => {
     if (!student || (!student.id && !student.studentId && !studentUrlId)) {
@@ -155,24 +176,39 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
       // 응답 데이터 구조 확인 및 처리
       let processedData = [];
       
-      if (data && data.attendance) {
-        // API가 { attendance: [...] } 형태로 응답한 경우
-        processedData = data.attendance;
-      } else if (data && Array.isArray(data)) {
-        // 배열로 응답이 온 경우
-        processedData = data;
-      } else if (data && typeof data === 'object') {
-        // 단일 객체로 응답이 온 경우 (더미 데이터 형태)
-        processedData = [{
-          ...data,
-          // attendance 객체가 없으면 기본 구조 생성
-          attendance: data.attendance || {
-            absent: { illness: 0, unauthorized: 0, etc: 0 },
-            tardy: { illness: 0, unauthorized: 0, etc: 0 },
+      const processAttendanceData = (attendanceData) => {
+        // 기본 attendance 구조가 없는 경우 초기화
+        if (!attendanceData.attendance) {
+          attendanceData.attendance = {
+            absence: { illness: 0, unauthorized: 0, etc: 0 },
+            lateness: { illness: 0, unauthorized: 0, etc: 0 },
             earlyLeave: { illness: 0, unauthorized: 0, etc: 0 },
             result: { illness: 0, unauthorized: 0, etc: 0 }
-          }
-        }];
+          };
+        }
+
+        // 기본 details 구조가 없는 경우 초기화
+        if (!attendanceData.details) {
+          attendanceData.details = {
+            absence: { illness: [], unauthorized: [], etc: [] },
+            lateness: { illness: [], unauthorized: [], etc: [] },
+            earlyLeave: { illness: [], unauthorized: [], etc: [] },
+            result: { illness: [], unauthorized: [], etc: [] }
+          };
+        }
+
+        return attendanceData;
+      };
+
+      if (data && data.attendance && Array.isArray(data.attendance)) {
+        // API가 { attendance: [...] } 형태로 응답한 경우
+        processedData = data.attendance.map(processAttendanceData);
+      } else if (data && Array.isArray(data)) {
+        // 배열로 응답이 온 경우
+        processedData = data.map(processAttendanceData);
+      } else if (data && typeof data === 'object') {
+        // 단일 객체로 응답이 온 경우
+        processedData = [processAttendanceData(data)];
       } else {
         // 데이터가 없는 경우 빈 배열
         processedData = [];
@@ -192,14 +228,14 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
             homeTeacher: currentUser.id,
             remarks: '',
             attendance: {
-              absent: { illness: 0, unauthorized: 0, etc: 0 },
-              tardy: { illness: 0, unauthorized: 0, etc: 0 },
+              absence: { illness: 0, unauthorized: 0, etc: 0 },
+              lateness: { illness: 0, unauthorized: 0, etc: 0 },
               earlyLeave: { illness: 0, unauthorized: 0, etc: 0 },
               result: { illness: 0, unauthorized: 0, etc: 0 }
             },
             details: {
-              absent: { illness: [], unauthorized: [], etc: [] },
-              tardy: { illness: [], unauthorized: [], etc: [] },
+              absence: { illness: [], unauthorized: [], etc: [] },
+              lateness: { illness: [], unauthorized: [], etc: [] },
               earlyLeave: { illness: [], unauthorized: [], etc: [] }
             }
           });
@@ -289,20 +325,31 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
   
   // Render attendance number with conditional styling
   const renderAttendanceNumber = (gradeData, type, reason) => {
+    // attendance 데이터 가져오기 (서버 명명 규칙에 맞춰 변환)
+    const getAttendanceType = (type) => {
+      switch (type) {
+        case 'absent': return 'absence';
+        case 'tardy': return 'lateness';
+        default: return type;
+      }
+    };
+
+    const attendanceType = getAttendanceType(type);
+    
     // 데이터 구조 안전성 검사
     if (!gradeData || !gradeData.attendance) {
-      console.warn('출결 데이터 구조 오류:', { gradeData, type, reason });
+      console.warn('출결 데이터 구조 오류:', { gradeData, attendanceType, reason });
       return <AttendanceNumber>.</AttendanceNumber>;
     }
     
     // attendance[type]이 존재하는지 확인
-    if (!gradeData.attendance[type]) {
-      console.warn(`출결 데이터에 ${type} 타입이 없습니다:`, gradeData.attendance);
+    if (!gradeData.attendance[attendanceType]) {
+      console.warn(`출결 데이터에 ${attendanceType} 타입이 없습니다:`, gradeData.attendance);
       return <AttendanceNumber>.</AttendanceNumber>;
     }
     
     // 안전하게 값 가져오기
-    const count = (gradeData.attendance[type][reason] !== undefined) ? gradeData.attendance[type][reason] : 0;
+    const count = (gradeData.attendance[attendanceType][reason] !== undefined) ? gradeData.attendance[attendanceType][reason] : 0;
     
     // 값이 있으면 누구나 클릭 가능
     const isClickable = count > 0;
@@ -481,22 +528,15 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
       {/* Attendance Modal */}
       <AttendanceModal 
         isOpen={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          // 모달이 닫힐 때 출결 데이터 다시 불러오기
-          fetchAttendanceData();
-        }}
+        onClose={handleModalClose}
+        onSave={handleModalSave}
         attendanceType={modalData.attendanceType}
         reasonType={modalData.reasonType}
         details={modalData.details}
         canEdit={modalData.canEdit}
-        studentName={student?.name}
+        studentName={student?.name || ''}
         grade={modalData.grade}
-        studentId={modalData.studentId}
-        onSave={() => {
-          // 저장 후 출결 데이터 다시 불러오기
-          fetchAttendanceData();
-        }}
+        studentId={student?.id || student?.studentId || studentUrlId}
       />
         </>
       )}

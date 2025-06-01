@@ -139,6 +139,13 @@ const Section = styled.section`
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   page-break-inside: avoid;
+  break-inside: avoid;
+  
+  /* 인쇄 시 각 섹션 사이에 적절한 여백 유지 */
+  @media print {
+    margin-bottom: 15mm;
+    box-shadow: none;
+  }
 `;
 
 const Title = styled.h2`
@@ -157,6 +164,14 @@ const FeedbackCard = styled.div`
   padding: 20px;
   margin-bottom: 20px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  page-break-inside: avoid;
+  break-inside: avoid;
+  
+  /* 인쇄 시 카드 스타일 조정 */
+  @media print {
+    border: 1px solid #e0e0e0;
+    box-shadow: none;
+  }
 `;
 
 const LoadingMessage = styled.div`

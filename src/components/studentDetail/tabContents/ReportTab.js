@@ -64,6 +64,34 @@ const ReportTab = () => {
 
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
+    pageStyle: `
+      @page {
+        size: A4;
+        margin: 20mm;
+      }
+      
+      @media print {
+        html, body {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        
+        .page-break {
+          page-break-after: always;
+          break-after: page;
+        }
+        
+        section {
+          page-break-inside: avoid;
+          break-inside: avoid;
+          margin-bottom: 15mm;
+        }
+      }
+    `,
+    onPrintError: (error) => {
+      console.error('[handlePrint] Print error:', error);
+      setIsPrinting(false);
+    },
     onBeforeGetContent: () => {
       console.log('[handlePrint] Before get content:', {
         isPrinting,
@@ -93,7 +121,10 @@ const ReportTab = () => {
           return;
         }
 
-        resolve(true);
+        // 인쇄 준비 시간 확보
+        setTimeout(() => {
+          resolve(true);
+        }, 500);
       });
     },
     onPrintError: (error) => {
@@ -190,21 +221,28 @@ const PrintableContent = styled.div`
   display: flex;
   flex-direction: column;
   gap: 20px;
+  position: relative;
+
+  /* 각 섹션에 페이지 브레이크 힌트 추가 */
+  & > section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 15mm;
+  }
 
   @media print {
     width: 210mm;
-    height: 297mm;
+    height: auto; /* 자동 높이 설정 */
     margin: 0;
     padding: 20mm;
     border: none;
     border-radius: 0;
     box-shadow: none;
-    page-break-after: always;
   }
 
   @page {
     size: A4;
-    margin: 0;
+    margin: 20mm; /* 모든 페이지에 동일한 여백 적용 */
   }
 `;
 

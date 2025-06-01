@@ -112,6 +112,13 @@ const Section = styled.section`
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   page-break-inside: avoid;
+  break-inside: avoid;
+  
+  /* 인쇄 시 각 섹션 사이에 적절한 여백 유지 */
+  @media print {
+    margin-bottom: 15mm;
+    box-shadow: none;
+  }
 `;
 
 const Title = styled.h2`
@@ -127,16 +134,27 @@ const TableContainer = styled.div`
   width: 100%;
   max-width: 1200px;
   overflow-x: auto;
-  margin-top: 15px;
+  margin-top: 20px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+  
+  @media print {
+    overflow-x: visible;
+  }
 `;
 
 const NotesTable = styled.table`
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 10px;
   table-layout: fixed;
   border: 1px solid #e0e0e0;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  page-break-inside: avoid;
+  break-inside: avoid;
+  
+  @media print {
+    box-shadow: none;
+  }
   
   th, td {
     padding: 12px;

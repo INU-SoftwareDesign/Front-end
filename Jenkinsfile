@@ -34,18 +34,22 @@ pipeline {
             }
         }*/
 
-/*
+
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
-                        sh 'sonar-scanner -Dsonar.login=$SONAR_TOKEN'
-                        
-                    }
+                    sh 'sonar-scanner'
+                }
+            }
+            post {
+                success {
+                    echo "✅ SonarQube 분석 성공"
+                }
+                failure {
+                    echo "❌ SonarQube 분석 실패"
                 }
             }
         }
-*/
 
         stage('Docker Build') {
             steps {

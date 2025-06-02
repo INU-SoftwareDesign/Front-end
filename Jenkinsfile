@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = 'mario322/react-app-test'
-        SLACK_WEBHOOK_URL = 'https://hooks.slack.com/services/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'
+        SLACK_WEBHOOK_URL = 'https://hooks.slack.com/services/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'
     }
 
     stages {

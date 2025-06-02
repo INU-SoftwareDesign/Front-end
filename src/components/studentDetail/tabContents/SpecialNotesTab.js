@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useUser } from '../../../contexts/UserContext';
 import styled from 'styled-components';
 import useUserStore from '../../../stores/useUserStore';
 import useSpecialNotesStore from '../../../stores/useSpecialNotesStore';
@@ -250,11 +251,12 @@ const SpecialNotesTab = ({ student, studentUrlId, forceLoad, currentUser }) => {
   const [parentCareerAspiration, setParentCareerAspiration] = useState('');
   const [note, setNote] = useState('');
   
-  // Get current user from props (most reliable), then fallback to store if needed
+  // Get current user from props (most reliable), then fallback to store or context if needed
   const { user: storeUser } = useUserStore();
+  const userContext = useUser();
   
-  // Use props first, then store
-  const user = currentUser || storeUser;
+  // Use props first, then store, then context
+  const user = currentUser || storeUser || userContext?.currentUser;
   
   // 실제 사용자 정보 로그
   console.log('%c[SpecialNotesTab] 사용자 정보 원천:', 'color: #8e44ad; font-weight: bold;', {
@@ -262,8 +264,7 @@ const SpecialNotesTab = ({ student, studentUrlId, forceLoad, currentUser }) => {
     'Props currentUser ID': currentUser?.id,
     'Props currentUser role': currentUser?.role,
     'Props currentUser grade': currentUser?.grade,
-    'Props currentUser classNumber': currentUser?.classNumber,
-    'Store User': storeUser
+    'Props currentUser classNumber': currentUser?.classNumber
   });
   const { 
     specialNotes, 
@@ -281,14 +282,13 @@ const SpecialNotesTab = ({ student, studentUrlId, forceLoad, currentUser }) => {
       console.log('%c[SpecialNotesTab] fetchSpecialNotes 호출:', 'color: #e67e22; font-weight: bold;', {
         studentId: student.studentId,
         forceLoad,
-        'store user available': !!storeUser,
-        'props user available': !!currentUser,
+        'context user available': !!userContext?.currentUser,
         'merged user available': !!user,
         'user data': user
       });
       fetchSpecialNotes(student.studentId);
     }
-  }, [student, fetchSpecialNotes, forceLoad, user, storeUser, currentUser]);
+  }, [student, fetchSpecialNotes, forceLoad, user]);
   
   // Log user permissions when component mounts or when user/student changes
   useEffect(() => {
@@ -296,6 +296,7 @@ const SpecialNotesTab = ({ student, studentUrlId, forceLoad, currentUser }) => {
     console.log('%c[SpecialNotesTab] 사용자 정보 소스 비교:', 'color: #e67e22; font-weight: bold;', {
       'Props currentUser': currentUser,
       'Zustand Store User': storeUser,
+      'Context User': userContext?.currentUser,
       'Final User': user
     });
     
@@ -348,7 +349,7 @@ const SpecialNotesTab = ({ student, studentUrlId, forceLoad, currentUser }) => {
       });
       console.groupEnd();
     }
-  }, [user, student, storeUser, currentUser]);
+  }, [user, student, storeUser, userContext, currentUser]);
   
   // Group special notes by grade
   const specialNotesByGrade = specialNotes.reduce((acc, note) => {

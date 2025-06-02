@@ -11,7 +11,7 @@ pipeline {
                 withCredentials([string(credentialsId: 'slack-webhook-url', variable: 'SLACK_WEBHOOK')]) {
                     sh '''
                         curl -X POST -H 'Content-type: application/json' \
-                        --data '{"text":"🚀 [Jenkins] Backend-dev 빌드 시작: #${BUILD_NUMBER}"}' \
+                        --data '{"text":"🚀 [Jenkins] Frontend-prod 빌드 시작"}' \
                         $SLACK_WEBHOOK
                     '''
                 }
@@ -46,7 +46,7 @@ pipeline {
             }
         }*/
 
-
+/*
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
@@ -62,7 +62,7 @@ pipeline {
                 }
             }
         }
-
+*/
         stage('Docker Build') {
             steps {
                 withCredentials([string(credentialsId: 'REACT_API_URL', variable: 'API_URL')]) {
@@ -111,7 +111,7 @@ pipeline {
             withCredentials([string(credentialsId: 'slack-webhook-url', variable: 'SLACK_WEBHOOK')]) {
                 sh '''
                     curl -X POST -H 'Content-type: application/json' \
-                    --data '{"text":"✅ [Jenkins] Backend-dev 빌드 성공: #${BUILD_NUMBER}"}' \
+                    --data '{"text":"✅ [Jenkins] Frontend-prod 빌드 성공"}' \
                     $SLACK_WEBHOOK
                 '''
             }
@@ -120,7 +120,7 @@ pipeline {
             withCredentials([string(credentialsId: 'slack-webhook-url', variable: 'SLACK_WEBHOOK')]) {
                 sh '''
                     curl -X POST -H 'Content-type: application/json' \
-                    --data '{"text":"❌ [Jenkins] Backend-dev 빌드 실패: #${BUILD_NUMBER}"}' \
+                    --data '{"text":"❌ [Jenkins] Frontend-prod 빌드 실패"}' \
                     $SLACK_WEBHOOK
                 '''
             }

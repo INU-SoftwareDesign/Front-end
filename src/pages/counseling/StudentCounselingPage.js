@@ -89,8 +89,27 @@ const StudentCounselingPage = () => {
         return;
       }
       
+      // 학생 ID 처리 로직 (8자리 숫자 형식인 경우 뒤의 4자리에서 앞의 0 제거)
+      let studentIdToUse = studentId;
+      
+      // 문자열로 변환
+      const studentIdStr = String(studentId);
+      
+      // 8자리 숫자 형식인지 확인 (예: 20250100)
+      if (studentIdStr.length === 8 && /^\d+$/.test(studentIdStr)) {
+        // 뒤의 4자리 추출 후 앞의 0 제거 (예: 0100 -> 100)
+        const last4Digits = studentIdStr.substring(4);
+        studentIdToUse = parseInt(last4Digits, 10);
+        console.log(`학생 ID 변환: ${studentIdStr} -> ${studentIdToUse}`);
+      } else if (typeof studentIdStr === 'string' && studentIdStr.startsWith('student')) {
+        // 'student' 접두사가 있는 경우 제거 (예: 'student100' -> '100')
+        const numericPart = studentIdStr.replace('student', '');
+        studentIdToUse = numericPart;
+        console.log(`학생 ID 변환: ${studentIdStr} -> ${studentIdToUse}`);
+      }
+      
       // API 호출
-      const response = await counselingApi.getStudentCounselings(studentId);
+      const response = await counselingApi.getStudentCounselings(studentIdToUse);
       
       if (response && response.data && response.data.success) {
         setCounselingRecords(response.data.data || []);

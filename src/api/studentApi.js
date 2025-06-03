@@ -164,19 +164,23 @@ export const updateStudentInfo = async (studentId, studentData) => {
     // 학생 ID에서 학생 번호만 추출
     const studentNumber = extractStudentNumber(studentId);
     
+    // classroom 필드 제거 (구조 분해 할당 사용)
+    const { classroom, ...dataToSend } = studentData;
+    
     // 요청 본문(request body) 내용을 콘솔에 상세히 출력
     console.log('===== 학생 정보 업데이트 요청 내용 =====');
     console.log(`학생 ID: ${studentId}, 추출된 학생 번호: ${studentNumber}`);
     console.log('요청 URL:', `/students/${studentNumber}`);
-    console.log('요청 본문(Request Body):', JSON.stringify(studentData, null, 2));
+    console.log('classroom 필드 제외됨');
+    console.log('요청 본문(Request Body):', JSON.stringify(dataToSend, null, 2));
     
     // 개발자가 요청 본문의 각 필드를 쉽게 확인할 수 있도록 개별 필드 출력
     console.log('요청 본문 개별 필드:');
-    Object.entries(studentData).forEach(([key, value]) => {
+    Object.entries(dataToSend).forEach(([key, value]) => {
       console.log(`- ${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`);
     });
     
-    const response = await apiClient.patch(`/students/${studentNumber}`, studentData);
+    const response = await apiClient.patch(`/students/${studentNumber}`, dataToSend);
     
     // 응답 데이터 출력
     console.log('===== 학생 정보 업데이트 응답 =====');

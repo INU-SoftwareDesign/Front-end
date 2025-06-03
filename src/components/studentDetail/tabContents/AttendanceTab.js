@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { getAttendanceRecords } from '../../../api/attendanceApi';
 import AttendanceModal from '../AttendanceModal';
+import { toast } from 'react-toastify';
 
 const TabContainer = styled.div`
   padding: 20px;
@@ -129,8 +130,13 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
   const handleModalSave = async (savedData) => {
     console.log('출결 데이터 저장 완료:', savedData);
     // 데이터가 성공적으로 저장되었으면 출결 데이터를 새로고침
-    if (savedData.response) {
-      await fetchAttendanceData();
+    if (savedData.response || savedData.success) {
+      // 저장 후 즉시 데이터를 새로고침하여 UI에 반영
+      // 잠시 대기 후 API 호출하여 백엔드에 데이터가 반영되도록 함
+      setTimeout(async () => {
+        await fetchAttendanceData();
+        console.log('출결 데이터 새로고침 완료');
+      }, 500);
     }
   };
   
@@ -177,6 +183,9 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
       let processedData = [];
       
       const processAttendanceData = (attendanceData) => {
+        // API 응답 데이터 구조 디버깅
+        console.log('처리할 출결 데이터:', JSON.stringify(attendanceData, null, 2));
+        
         // 기본 attendance 구조가 없는 경우 초기화
         if (!attendanceData.attendance) {
           attendanceData.attendance = {
@@ -185,6 +194,34 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
             earlyLeave: { illness: 0, unauthorized: 0, etc: 0 },
             result: { illness: 0, unauthorized: 0, etc: 0 }
           };
+        }
+        
+        // absence가 있지만 absence.illness가 없는 경우 처리
+        if (attendanceData.attendance.absence && typeof attendanceData.attendance.absence.illness === 'undefined') {
+          attendanceData.attendance.absence.illness = 0;
+          attendanceData.attendance.absence.unauthorized = 0;
+          attendanceData.attendance.absence.etc = 0;
+        }
+        
+        // lateness가 있지만 lateness.illness가 없는 경우 처리
+        if (attendanceData.attendance.lateness && typeof attendanceData.attendance.lateness.illness === 'undefined') {
+          attendanceData.attendance.lateness.illness = 0;
+          attendanceData.attendance.lateness.unauthorized = 0;
+          attendanceData.attendance.lateness.etc = 0;
+        }
+        
+        // earlyLeave가 있지만 earlyLeave.illness가 없는 경우 처리
+        if (attendanceData.attendance.earlyLeave && typeof attendanceData.attendance.earlyLeave.illness === 'undefined') {
+          attendanceData.attendance.earlyLeave.illness = 0;
+          attendanceData.attendance.earlyLeave.unauthorized = 0;
+          attendanceData.attendance.earlyLeave.etc = 0;
+        }
+        
+        // result가 있지만 result.illness가 없는 경우 처리
+        if (attendanceData.attendance.result && typeof attendanceData.attendance.result.illness === 'undefined') {
+          attendanceData.attendance.result.illness = 0;
+          attendanceData.attendance.result.unauthorized = 0;
+          attendanceData.attendance.result.etc = 0;
         }
 
         // 기본 details 구조가 없는 경우 초기화
@@ -196,6 +233,17 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
             result: { illness: [], unauthorized: [], etc: [] }
           };
         }
+        
+        // details 내부 구조 처리
+        ['absence', 'lateness', 'earlyLeave', 'result'].forEach(type => {
+          if (!attendanceData.details[type]) {
+            attendanceData.details[type] = { illness: [], unauthorized: [], etc: [] };
+          } else {
+            if (!attendanceData.details[type].illness) attendanceData.details[type].illness = [];
+            if (!attendanceData.details[type].unauthorized) attendanceData.details[type].unauthorized = [];
+            if (!attendanceData.details[type].etc) attendanceData.details[type].etc = [];
+          }
+        });
 
         return attendanceData;
       };
@@ -292,19 +340,26 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
     const canView = true; // 모든 사용자가 조회 가능
     const canEdit = isHomeTeacher(gradeData); // 현재 담임인 학년만 수정 가능
     
-    // Get details for this attendance type and reason
-    const details = gradeData.details?.[attendanceType]?.[reasonType] || [];
-    
-    setModalData({
-      attendanceType,
-      reasonType,
-      details,
-      grade: gradeData.grade,
-      canEdit: canEdit,
-      studentId: student.id
+    // 클릭 시 항상 최신 데이터를 가져오기 위해 출결 데이터를 새로고침
+    // 이를 통해 모달이 열릴 때 항상 최신 데이터가 표시됨
+    fetchAttendanceData().then(() => {
+      // 새로고침된 데이터에서 해당 학년 데이터 찾기
+      const updatedGradeData = attendanceData.find(item => item.grade === gradeData.grade);
+      
+      // 새로고침된 데이터에서 details 가져오기
+      const updatedDetails = updatedGradeData?.details?.[attendanceType]?.[reasonType] || [];
+      
+      setModalData({
+        attendanceType,
+        reasonType,
+        details: updatedDetails, // 최신 데이터로 업데이트
+        grade: gradeData.grade,
+        canEdit: canEdit,
+        studentId: student.studentId || student.id // studentId가 우선적으로 사용되도록 수정
+      });
+      
+      setModalOpen(true);
     });
-    
-    setModalOpen(true);
   };
   
   // Handle save new attendance record
@@ -313,13 +368,24 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
       console.log('출결 데이터 저장 요청:', formData);
       
       // 성공적으로 저장되면 데이터 다시 불러오기
-      await fetchAttendanceData();
+      if (formData.success || formData.response) {
+        // 토스트 메시지로 사용자에게 알림
+        toast.success('출결 데이터가 성공적으로 저장되었습니다.');
+        
+        // 즉시 데이터 새로고침
+        // 잠시 대기 후 API 호출하여 백엔드에 데이터가 반영되도록 함
+        setTimeout(async () => {
+          await fetchAttendanceData();
+          console.log('출결 데이터 새로고침 완료');
+        }, 1000);
+      }
       
       // 모달 닫기
       setModalOpen(false);
     } catch (error) {
       console.error('출결 데이터 저장 실패:', error);
-      // 에러 처리는 AttendanceModal에서 처리함
+      toast.error('출결 데이터 저장 중 오류가 발생했습니다.');
+      // 에러 처리는 AttendanceModal에서도 처리함
     }
   };
   
@@ -349,7 +415,21 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
     }
     
     // 안전하게 값 가져오기
-    const count = (gradeData.attendance[attendanceType][reason] !== undefined) ? gradeData.attendance[attendanceType][reason] : 0;
+    let count = 0;
+    
+    // 데이터 형식에 따라 다르게 처리
+    if (typeof gradeData.attendance[attendanceType] === 'object') {
+      // 객체 형태인 경우 (e.g., { illness: 2, unauthorized: 0, etc: 1 })
+      count = (gradeData.attendance[attendanceType][reason] !== undefined) 
+        ? Number(gradeData.attendance[attendanceType][reason]) 
+        : 0;
+    } else if (typeof gradeData.attendance[attendanceType] === 'number') {
+      // 숫자 형태인 경우 (단일 값)
+      count = reason === 'illness' ? Number(gradeData.attendance[attendanceType]) : 0;
+    }
+    
+    // 디버깅 로그
+    console.log(`학년: ${gradeData.grade}, 타입: ${attendanceType}, 사유: ${reason}, 값: ${count}`);
     
     // 값이 있으면 누구나 클릭 가능
     const isClickable = count > 0;

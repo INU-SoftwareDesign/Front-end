@@ -327,11 +327,13 @@ const AttendanceModal = ({
       
       // Call the original onSave function to update UI with the response data
       if (typeof onSave === 'function') {
+        // 저장된 데이터와 API 응답을 함께 전달하여 부모 컴포넌트에서 데이터 갱신 처리
         onSave({
           ...formData,
           attendanceType: formData.attendanceType || attendanceType,
           reasonType: formData.reasonType || reasonType,
-          response: response  // Include the API response
+          response: response,  // Include the API response
+          success: true        // 성공 여부 표시
         });
       }
       

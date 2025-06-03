@@ -45,8 +45,18 @@ export const addAttendanceRecord = async (studentId, attendanceData) => {
     // studentId 처리
     const processedId = processStudentId(studentId);
     console.log(`출결 데이터 추가 API 호출: 학생 ID ${processedId}`);
+
+    // API 요청 전송 전 attendanceType 값 변경
+    const modifiedAttendanceData = { ...attendanceData };
+    if (modifiedAttendanceData.attendanceType === 'tardy') {
+      modifiedAttendanceData.attendanceType = 'lateness';
+      console.log("attendanceType 'tardy'가 'lateness'로 변경되었습니다.");
+    } else if (modifiedAttendanceData.attendanceType === 'absent') {
+      modifiedAttendanceData.attendanceType = 'absence';
+      console.log("attendanceType 'absent'가 'absence'로 변경되었습니다.");
+    }
     
-    const response = await apiClient.post(`/attendances/students/${processedId}`, attendanceData);
+    const response = await apiClient.post(`/attendances/students/${processedId}`, modifiedAttendanceData);
     return response.data;
   } catch (error) {
     if (error.response) {

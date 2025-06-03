@@ -102,7 +102,9 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  // eslint-disable-next-line no-unused-vars
   const [filterYear, setFilterYear] = useState('');
+  // eslint-disable-next-line no-unused-vars
   const [filterGrade, setFilterGrade] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalData, setModalData] = useState({
@@ -317,7 +319,8 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
       forceLoad 
     });
     fetchAttendanceData();
-  }, [student, studentUrlId, filterYear, filterGrade, forceLoad]); // studentUrlId와 forceLoad를 의존성 배열에 추가
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student, studentUrlId, filterYear, filterGrade, forceLoad]); // fetchAttendanceData는 의존성 배열에서 제외 (순환 참조 문제 방지)
   
   if (!student) return null;
   
@@ -337,8 +340,21 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
   // Handle click on attendance number
   const handleAttendanceClick = (gradeData, attendanceType, reasonType) => {
     // 과거 데이터는 누구나 볼 수 있음, 현재 담임인 학년만 수정 가능
-    const canView = true; // 모든 사용자가 조회 가능
+    // eslint-disable-next-line no-unused-vars
+    const canView = true; // 모든 사용자가 조회 가능 (현재 사용되지 않지만 향후 확장을 위해 유지)
     const canEdit = isHomeTeacher(gradeData); // 현재 담임인 학년만 수정 가능
+    
+    // 서버 명명 규칙에 맞게 attendanceType 변환
+    const getServerAttendanceType = (type) => {
+      switch (type) {
+        case 'absent': return 'absence';
+        case 'tardy': return 'lateness';
+        default: return type;
+      }
+    };
+    
+    const serverAttendanceType = getServerAttendanceType(attendanceType);
+    console.log(`출결 타입 변환: ${attendanceType} → ${serverAttendanceType}`);
     
     // 클릭 시 항상 최신 데이터를 가져오기 위해 출결 데이터를 새로고침
     // 이를 통해 모달이 열릴 때 항상 최신 데이터가 표시됨
@@ -346,11 +362,16 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
       // 새로고침된 데이터에서 해당 학년 데이터 찾기
       const updatedGradeData = attendanceData.find(item => item.grade === gradeData.grade);
       
-      // 새로고침된 데이터에서 details 가져오기
-      const updatedDetails = updatedGradeData?.details?.[attendanceType]?.[reasonType] || [];
+      // 새로고침된 데이터에서 details 가져오기 (서버 명명 규칙 사용)
+      const updatedDetails = updatedGradeData?.details?.[serverAttendanceType]?.[reasonType] || [];
+      console.log('상세 데이터 조회:', {
+        attendanceType: serverAttendanceType,
+        reasonType,
+        details: updatedDetails
+      });
       
       setModalData({
-        attendanceType,
+        attendanceType, // 원래 타입은 그대로 모달에 전달 (UI 표시용)
         reasonType,
         details: updatedDetails, // 최신 데이터로 업데이트
         grade: gradeData.grade,
@@ -363,6 +384,7 @@ const AttendanceTab = ({ student, currentUser, forceLoad, studentUrlId }) => {
   };
   
   // Handle save new attendance record
+  // eslint-disable-next-line no-unused-vars
   const handleSaveAttendance = async (formData) => {
     try {
       console.log('출결 데이터 저장 요청:', formData);

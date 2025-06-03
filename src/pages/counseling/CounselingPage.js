@@ -492,10 +492,45 @@ const CounselingPage = () => {
 
   // Load counseling data
   const loadPendingCounselings = async () => {
+    if (!currentUser || !currentUser.id) {
+      console.error('사용자 정보가 없어 상담 신청 내역을 로드할 수 없습니다.');
+      return;
+    }
+    
+    console.log('상담 신청 내역 로딩 시작, 사용자 ID:', currentUser.id);
     try {
+      // API 호출 전 로그
+      console.log('API 호출 직전 - getTeacherCounselingRequests:', currentUser.id, { status: '신청' });
       const response = await counselingApi.getTeacherCounselingRequests(currentUser.id, { status: '신청' });
-      if (response.data && response.data.success) {
-        setPendingCounselings(response.data.counselings || []);
+      console.log('API 응답 (신청):', response);
+      
+      // 다양한 응답 구조 처리
+      if (response && response.data) {
+        let counselingsData = [];
+        
+        // response.data.counselings가 있는 경우 (정상 응답)
+        if (response.data.counselings) {
+          counselingsData = response.data.counselings;
+          console.log('상담 신청 내역 로드 성공 (counselings 형식):', counselingsData);
+        }
+        // response.data.data가 있는 경우 (대체 형식)
+        else if (response.data.data) {
+          counselingsData = response.data.data;
+          console.log('상담 신청 내역 로드 성공 (data 형식):', counselingsData);
+        }
+        // response.data 자체가 배열인 경우
+        else if (Array.isArray(response.data)) {
+          counselingsData = response.data;
+          console.log('상담 신청 내역 로드 성공 (배열 형식):', counselingsData);
+        }
+        
+        // 배열인지 한번 더 확인
+        if (Array.isArray(counselingsData)) {
+          setPendingCounselings(counselingsData);
+        } else {
+          console.error('상담 신청 내역 데이터가 배열이 아닙니다:', counselingsData);
+          setPendingCounselings([]);
+        }
       } else {
         setPendingCounselings([]);
         console.error('상담 신청 내역 로딩 실패: 서버 응답 오류');
@@ -508,11 +543,45 @@ const CounselingPage = () => {
   };
 
   const loadScheduledCounselings = async () => {
+    if (!currentUser || !currentUser.id) {
+      console.error('사용자 정보가 없어 상담 예정 내역을 로드할 수 없습니다.');
+      return;
+    }
+    
+    console.log('상담 예정 내역 로딩 시작, 사용자 ID:', currentUser.id);
     try {
-      // API 호출하여 예약확정 상태의 상담 일정 가져오기
+      // API 호출 전 로그
+      console.log('API 호출 직전 - getTeacherScheduledCounselings:', currentUser.id, { status: '예약확정' });
       const response = await counselingApi.getTeacherScheduledCounselings(currentUser.id, { status: '예약확정' });
-      if (response.data && response.data.success) {
-        setScheduledCounselings(response.data.counselings || []);
+      console.log('API 응답 (예약확정):', response);
+      
+      // 다양한 응답 구조 처리
+      if (response && response.data) {
+        let counselingsData = [];
+        
+        // response.data.counselings가 있는 경우 (정상 응답)
+        if (response.data.counselings) {
+          counselingsData = response.data.counselings;
+          console.log('상담 예정 내역 로드 성공 (counselings 형식):', counselingsData);
+        }
+        // response.data.data가 있는 경우 (대체 형식)
+        else if (response.data.data) {
+          counselingsData = response.data.data;
+          console.log('상담 예정 내역 로드 성공 (data 형식):', counselingsData);
+        }
+        // response.data 자체가 배열인 경우
+        else if (Array.isArray(response.data)) {
+          counselingsData = response.data;
+          console.log('상담 예정 내역 로드 성공 (배열 형식):', counselingsData);
+        }
+        
+        // 배열인지 한번 더 확인
+        if (Array.isArray(counselingsData)) {
+          setScheduledCounselings(counselingsData);
+        } else {
+          console.error('상담 예정 내역 데이터가 배열이 아닙니다:', counselingsData);
+          setScheduledCounselings([]);
+        }
       } else {
         setScheduledCounselings([]);
         console.error('상담 예정 내역 로딩 실패: 서버 응답 오류');
@@ -525,28 +594,104 @@ const CounselingPage = () => {
   };
 
   const loadCompletedCounselings = async () => {
+    if (!currentUser || !currentUser.id) {
+      console.error('사용자 정보가 없어 상담 완료 내역을 로드할 수 없습니다.');
+      return;
+    }
+    
+    console.log('상담 완료 내역 로딩 시작, 사용자 ID:', currentUser.id);
     try {
+      // API 호출 전 로그
+      console.log('API 호출 직전 - getTeacherScheduledCounselings:', currentUser.id, { status: '완료' });
       const response = await counselingApi.getTeacherScheduledCounselings(currentUser.id, { status: '완료' });
-      if (response.data && response.data.success) {
-        setCompletedCounselings(response.data.counselings || []);
+      console.log('API 응답 (완료):', response);
+      
+      // 다양한 응답 구조 처리
+      if (response && response.data) {
+        let counselingsData = [];
+        
+        // response.data.counselings가 있는 경우 (정상 응답)
+        if (response.data.counselings) {
+          counselingsData = response.data.counselings;
+          console.log('상담 완료 내역 로드 성공 (counselings 형식):', counselingsData);
+        }
+        // response.data.data가 있는 경우 (대체 형식)
+        else if (response.data.data) {
+          counselingsData = response.data.data;
+          console.log('상담 완료 내역 로드 성공 (data 형식):', counselingsData);
+        }
+        // response.data 자체가 배열인 경우
+        else if (Array.isArray(response.data)) {
+          counselingsData = response.data;
+          console.log('상담 완료 내역 로드 성공 (배열 형식):', counselingsData);
+        }
+        
+        // 배열인지 한번 더 확인
+        if (Array.isArray(counselingsData)) {
+          setCompletedCounselings(counselingsData);
+        } else {
+          console.error('상담 완료 내역 데이터가 배열이 아닙니다:', counselingsData);
+          setCompletedCounselings([]);
+        }
+      } else {
+        setCompletedCounselings([]);
+        console.error('상담 완료 내역 로딩 실패: 서버 응답 오류');
       }
     } catch (error) {
+      setCompletedCounselings([]);
       console.error('상담 완료 내역 로딩 실패:', error);
       console.error('상담 완료 내역을 불러오는데 실패했습니다.');
     }
   };
 
   useEffect(() => {
-    if (currentUser && currentUser.id && activeTab === 'myCounselings') {
+    console.log('CounselingPage useEffect 실행, 현재 사용자:', currentUser);
+    if (currentUser && activeTab === 'myCounselings') {
+      console.log('상담 API 호출 시작, 사용자 ID:', currentUser.id);
       loadPendingCounselings();
       loadScheduledCounselings();
       loadCompletedCounselings();
+    } else {
+      console.log('API 호출 조건 미충족:', { 
+        '사용자 존재': !!currentUser, 
+        '사용자 ID 존재': !!(currentUser && currentUser.id), 
+        '활성 탭이 myCounselings': activeTab === 'myCounselings' 
+      });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, activeTab]);
 
   // Get all counselings for calendar display
   const allCounselings = [...pendingCounselings, ...scheduledCounselings, ...completedCounselings];
+  
+  // 디버깅용 로그 추가
+  useEffect(() => {
+    console.log('상담 데이터 현황:', {
+      '신청 상담 수': pendingCounselings.length,
+      '예정 상담 수': scheduledCounselings.length,
+      '완료 상담 수': completedCounselings.length,
+      '캘린더용 전체 상담 수': allCounselings.length
+    });
+    
+    // 상담 데이터의 날짜 형식 확인
+    if (pendingCounselings.length > 0) {
+      console.log('신청 상담 데이터 예시:', pendingCounselings[0]);
+      console.log('신청 상담 날짜 형식:', pendingCounselings[0].counselingDate);
+    }
+    
+    if (scheduledCounselings.length > 0) {
+      console.log('예정 상담 데이터 예시:', scheduledCounselings[0]);
+      console.log('예정 상담 날짜 형식:', scheduledCounselings[0].counselingDate);
+    }
+    
+    if (completedCounselings.length > 0) {
+      console.log('완료 상담 데이터 예시:', completedCounselings[0]);
+      console.log('완료 상담 날짜 형식:', completedCounselings[0].counselingDate);
+    }
+    
+    // 전체 상담 데이터 중 일부만 로그
+    console.log('신청 상담 데이터 일부:', pendingCounselings.slice(0, 2));
+    console.log('예정 상담 데이터 일부:', scheduledCounselings.slice(0, 2));
+  }, [pendingCounselings, scheduledCounselings, completedCounselings]);
 
   // Function to handle opening the modal for a pending counseling
   const handlePendingCounselingClick = (counseling) => {
@@ -645,14 +790,52 @@ const CounselingPage = () => {
 
   // Function to get counselings for a specific date (for calendar)
   const getCounselingsForDate = (date) => {
-    return allCounselings.filter(counseling => {
-      const counselingDate = new Date(counseling.counselingDate);
-      return (
-        counselingDate.getDate() === date.getDate() &&
-        counselingDate.getMonth() === date.getMonth() &&
-        counselingDate.getFullYear() === date.getFullYear()
-      );
+    // 캘린더 날짜를 YYYY-MM-DD 형식으로 변환
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    
+    // 디버깅 로그 추가
+    const counselingsForDate = allCounselings.filter(counseling => {
+      if (!counseling.counselingDate) return false;
+      
+      // 상담 데이터의 날짜 처리
+      let isMatch = false;
+      
+      // 1. 정확한 문자열 비교 (YYYY-MM-DD 형식)
+      if (counseling.counselingDate === dateStr) {
+        isMatch = true;
+      } 
+      // 2. Date 객체로 변환하여 비교 (다른 형식의 날짜 문자열이거나 Date 객체인 경우)
+      else {
+        try {
+          const counselingDate = new Date(counseling.counselingDate);
+          // 유효한 날짜인지 확인
+          if (!isNaN(counselingDate.getTime())) {
+            // 날짜만 비교 (시간 제외)
+            isMatch = (
+              counselingDate.getDate() === date.getDate() &&
+              counselingDate.getMonth() === date.getMonth() &&
+              counselingDate.getFullYear() === date.getFullYear()
+            );
+          }
+        } catch (error) {
+          console.error('날짜 변환 오류:', counseling.counselingDate, error);
+        }
+      }
+      
+      // 디버깅을 위해 날짜 비교 로그 (전체 로그는 너무 많으므로 일치하는 경우만 로그)
+      if (isMatch) {
+        console.log(`날짜 일치: 캘린더 날짜=${dateStr}, 상담 날짜=${counseling.counselingDate}, 학생=${counseling.studentName}`);
+      }
+      
+      return isMatch;
     });
+    
+    // 해당 날짜에 상담이 있는 경우 로그
+    if (counselingsForDate.length > 0) {
+      console.log(`${dateStr} 날짜에 ${counselingsForDate.length}개의 상담이 있습니다:`, counselingsForDate);
+    }
+    
+    return counselingsForDate;
   };
 
   // Custom tile content for calendar
@@ -662,16 +845,63 @@ const CounselingPage = () => {
     const counselingsForDate = getCounselingsForDate(date);
     if (counselingsForDate.length === 0) return null;
     
+    // 디버깅용 로그 - 상담 일정이 있는 날짜의 타일 렌더링
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    console.log(`타일 렌더링: ${dateStr}에 ${counselingsForDate.length}개의 상담 일정 표시`);
+    
+    // 상태에 따른 색상 매핑 함수
+    const getStatusColor = (status) => {
+      if (!status) return '#9E9E9E'; // 상태가 없는 경우 회색
+      
+      // 한글 상태
+      if (status === '신청') return '#FFC107'; // 노란색
+      if (status === '예약확정') return '#2196F3'; // 파란색
+      if (status === '완료') return '#4CAF50'; // 초록색
+      if (status === '취소') return '#F44336'; // 빨간색
+      
+      // 영문 상태
+      if (status.toLowerCase() === 'pending') return '#FFC107';
+      if (status.toLowerCase() === 'scheduled') return '#2196F3';
+      if (status.toLowerCase() === 'completed') return '#4CAF50';
+      if (status.toLowerCase() === 'canceled') return '#F44336';
+      
+      return '#9E9E9E'; // 기본값
+    };
+    
     return (
-      <>
+      <div style={{ marginTop: '2px', width: '100%' }}>
         {counselingsForDate.slice(0, 2).map((counseling, index) => (
-          <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-            <CounselingDot status={counseling.status} />
-            <CounselingName>{counseling.studentName}</CounselingName>
+          <div key={index} style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '4px',
+            marginBottom: '2px',
+            fontSize: '10px',
+            lineHeight: '1.2',
+            width: '100%',
+            overflow: 'hidden'
+          }}>
+            <div style={{ 
+              width: '6px', 
+              height: '6px', 
+              borderRadius: '50%', 
+              backgroundColor: getStatusColor(counseling.status),
+              flexShrink: 0
+            }} />
+            <span style={{ 
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis', 
+              whiteSpace: 'nowrap',
+              fontSize: '9px'
+            }}>
+              {counseling.studentName}
+            </span>
           </div>
         ))}
-        {counselingsForDate.length > 2 && <CounselingName>+{counselingsForDate.length - 2}명</CounselingName>}
-      </>
+        {counselingsForDate.length > 2 && 
+          <div style={{ fontSize: '9px', textAlign: 'center' }}>+{counselingsForDate.length - 2}개 더</div>
+        }
+      </div>
     );
   };
 

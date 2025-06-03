@@ -56,9 +56,16 @@ const counselingApi = {
   getTeacherCounselingRequests: (teacherId, params = {}) => {
     // 'teacher5'와 같은 형식에서 숫자만 추출
     const teacherIdNumber = teacherId.replace('teacher', '');
-    console.log(`원본 teacherId: ${teacherId}, 변환된 teacherId: ${teacherIdNumber}`);
+    console.log(`[상담 API] 신청 내역 요청 - 원본 teacherId: ${teacherId}, 변환된 teacherId: ${teacherIdNumber}`);
+    console.log(`[상담 API] 요청 URL: /counselings/teacher/${teacherIdNumber}/requests`);
+    console.log(`[상담 API] 요청 파라미터:`, params);
     
     return apiClient.get(`/counselings/teacher/${teacherIdNumber}/requests`, { params })
+      .then(response => {
+        console.log(`[상담 API] 신청 내역 응답 성공:`, response.status);
+        console.log(`[상담 API] 응답 데이터:`, JSON.stringify(response.data, null, 2));
+        return response;
+      })
       .catch(error => {
         console.warn('API call failed, using dummy data:', error);
         
@@ -66,7 +73,7 @@ const counselingApi = {
         return {
           data: {
             success: true,
-            data: [
+            counselings: [
               {
                 id: 501,
                 studentId: 1,
@@ -114,9 +121,16 @@ const counselingApi = {
   getTeacherScheduledCounselings: (teacherId, params = {}) => {
     // 'teacher5'와 같은 형식에서 숫자만 추출
     const teacherIdNumber = teacherId.replace('teacher', '');
-    console.log(`원본 teacherId: ${teacherId}, 변환된 teacherId: ${teacherIdNumber}`);
+    console.log(`[상담 API] 예약/완료 내역 요청 - 원본 teacherId: ${teacherId}, 변환된 teacherId: ${teacherIdNumber}`);
+    console.log(`[상담 API] 요청 URL: /counselings/teacher/${teacherIdNumber}/scheduled`);
+    console.log(`[상담 API] 요청 파라미터:`, params);
     
     return apiClient.get(`/counselings/teacher/${teacherIdNumber}/scheduled`, { params })
+      .then(response => {
+        console.log(`[상담 API] 예약/완료 내역 응답 성공:`, response.status);
+        console.log(`[상담 API] 응답 데이터:`, JSON.stringify(response.data, null, 2));
+        return response;
+      })
       .catch(error => {
         console.warn('API call failed, using dummy data:', error);
         
@@ -124,7 +138,7 @@ const counselingApi = {
         return {
           data: {
             success: true,
-            data: [
+            counselings: [
               {
                 id: 201,
                 studentId: 2,

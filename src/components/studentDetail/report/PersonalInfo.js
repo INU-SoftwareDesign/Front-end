@@ -53,7 +53,7 @@ const PersonalInfo = ({ data }) => {
                 <TableCell>{record.grade}학년</TableCell>
                 <TableCell>{record.classNumber}반</TableCell>
                 <TableCell>{record.number}번</TableCell>
-                <TableCell>{record.homeroomTeacher}</TableCell>
+                <TableCell>{record.homeroom_teacher}</TableCell>
               </tr>
             ))}  
           </tbody>

@@ -200,7 +200,7 @@ const feedbackApi = {
   updateFeedback: (feedbackId, feedbackData) => {
     console.log('[FeedbackAPI] Updating feedback:', feedbackId);
     console.log('[FeedbackAPI] Request body:', JSON.stringify(feedbackData, null, 2));
-    return apiClient.patch(`/feedbacks/${feedbackId}`, feedbackData)
+    return apiClient.patch(`/feedbacks/groups/${feedbackId}`, feedbackData)
       .then(response => {
         console.log('[FeedbackAPI] Updated feedback response:', response.data);
         return response;

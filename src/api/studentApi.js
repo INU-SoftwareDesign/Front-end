@@ -50,7 +50,37 @@ export const getStudents = async (params = {}) => {
  */
 export const getStudentById = async (studentId) => {
   try {
-    const response = await apiClient.get(`/students/${studentId}`);
+    // 학생 ID에서 학생 번호만 추출 - updateStudentInfo와 동일한 방식 사용
+    const studentNumber = extractStudentNumber(studentId);
+    
+    console.log('===== 학생 정보 조회 요청 =====');
+    console.log(`학생 ID: ${studentId}, 추출된 학생 번호: ${studentNumber}`);
+    console.log('요청 URL:', `/students/${studentNumber}`);
+    
+    // 학생 번호를 사용하여 API 호출
+    const response = await apiClient.get(`/students/${studentNumber}`);
+    
+    console.log('===== 학생 정보 응답 데이터 =====');
+    console.log('응답 상태 코드:', response.status);
+    console.log('응답 데이터 전체:', JSON.stringify(response.data, null, 2));
+    
+    // 중요 필드만 분리하여 출력
+    if (response.data) {
+      console.log('===== 학생 정보 주요 필드 =====');
+      const { studentId, name, grade, classNumber, number, gender, birthdate, address, contact, parentContact, profileImage } = response.data;
+      console.log('학생 ID:', studentId);
+      console.log('이름:', name);
+      console.log('학년:', grade);
+      console.log('반:', classNumber);
+      console.log('번호:', number);
+      console.log('성별:', gender);
+      console.log('생년월일:', birthdate);
+      console.log('주소:', address);
+      console.log('연락처:', contact);
+      console.log('보호자 연락처:', parentContact);
+      console.log('프로필 이미지:', profileImage);
+    }
+    
     return response.data;
   } catch (error) {
     console.warn('API call failed, using dummy data:', error);
@@ -116,7 +146,25 @@ export const updateStudentInfo = async (studentId, studentData) => {
     // 학생 ID에서 학생 번호만 추출
     const studentNumber = extractStudentNumber(studentId);
     
+    // 요청 본문(request body) 내용을 콘솔에 상세히 출력
+    console.log('===== 학생 정보 업데이트 요청 내용 =====');
+    console.log(`학생 ID: ${studentId}, 추출된 학생 번호: ${studentNumber}`);
+    console.log('요청 URL:', `/students/${studentNumber}`);
+    console.log('요청 본문(Request Body):', JSON.stringify(studentData, null, 2));
+    
+    // 개발자가 요청 본문의 각 필드를 쉽게 확인할 수 있도록 개별 필드 출력
+    console.log('요청 본문 개별 필드:');
+    Object.entries(studentData).forEach(([key, value]) => {
+      console.log(`- ${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`);
+    });
+    
     const response = await apiClient.patch(`/students/${studentNumber}`, studentData);
+    
+    // 응답 데이터 출력
+    console.log('===== 학생 정보 업데이트 응답 =====');
+    console.log('응답 데이터:', response.data);
+    console.log('응답 상태 코드:', response.status);
+    
     return response.data;
   } catch (error) {
     console.warn('API call failed:', error);

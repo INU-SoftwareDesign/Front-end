@@ -205,7 +205,7 @@ const AcademicRecordContainer = styled.div`
   margin-bottom: 8px;
 `;
 
-const PersonalInfoTab = ({ student, currentUser }) => {
+const PersonalInfoTab = ({ student, currentUser, refreshStudentData }) => {
   // State for edit mode
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -234,25 +234,31 @@ const PersonalInfoTab = ({ student, currentUser }) => {
   // 개발 환경에서는 조건을 완화하여 테스트할 수 있도록 합니다
   const isDev = process.env.NODE_ENV === 'development';
   
+  
+  // 학생과 교사의 학년/반이 일치하는지 확인하여 담임 교사 여부 계산
+  const calculatedIsHomeroom = currentUser?.role === "teacher" && 
+    String(currentUser?.grade) === String(student.grade) && 
+    String(currentUser?.classNumber) === String(student.classNumber);
+  
+  // useEffect를 사용하지 않고 담임 교사 여부를 계산만 합니다.
+  // useEffect와 Zustand 업데이트를 사용하면 무한 업데이트 루프가 발생할 수 있습니다.
+  
   // 디버깅을 위한 로그 추가
   console.log('담임 교사 확인 데이터:', {
     currentUser,
     studentGrade: student.grade,
     studentClass: student.classNumber,
-    teacherGrade: currentUser?.gradeLevel,
+    teacherGrade: currentUser?.grade,
     teacherClass: currentUser?.classNumber,
     isTeacher: currentUser?.role === "teacher",
-    isHomeroom: currentUser?.isHomeroom
+    isHomeroom: calculatedIsHomeroom, // 계산된 값만 사용
+    calculatedIsHomeroom // 계산된 담임 교사 여부
   });
   
   // 개발 환경에서는 교사 권한만 있으면 수정 가능하도록 설정
   const isHomeroomTeacher = currentUser && 
     currentUser.role === "teacher" && 
-    (isDev || (
-      currentUser.isHomeroom && 
-      String(currentUser.gradeLevel) === String(student.grade) && 
-      String(currentUser.classNumber) === String(student.classNumber)
-    ));
+    (isDev || calculatedIsHomeroom); // 계산된 담임 교사 여부 사용
 
   // Check if the current user can edit profile
   const canEditProfile = currentUser && (
@@ -287,7 +293,7 @@ const PersonalInfoTab = ({ student, currentUser }) => {
       ...prev,
       history: [
         ...prev.history,
-        { grade: '', classNumber: '', number: '', homeroomTeacher: '' }
+        { grade: '', classNumber: '', number: '', homeroom_teacher: '' }
       ]
     }));
   };
@@ -337,31 +343,76 @@ const PersonalInfoTab = ({ student, currentUser }) => {
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
+      console.log('학생 정보 업데이트 시작...', {
+        studentId: student.studentId,
+        formData: formData
+      });
       
       // Prepare data for API
       const apiData = {
         ...formData,
+        // history 배열의 각 항목에서 homeroom_teacher 키가 있는지 확인하고, 있다면 그대로 사용
+        history: formData.history.map(item => {
+          // 기존 항목 복사
+          const newItem = { ...item };
+          
+          // homeroom_teacher 키가 있는지 확인
+          if ('homeroom_teacher' in newItem) {
+            // 키 값 유지 (백엔드에서 기대하는 형식)
+            console.log('항목에 homeroom_teacher 키 발견:', newItem);
+          } else if ('homeroomTeacher' in newItem) {
+            // 이전 형식의 키가 있는 경우, 새 형식으로 변환
+            console.log('항목에 homeroomTeacher 키 발견, 변환 필요:', newItem);
+            newItem.homeroom_teacher = newItem.homeroomTeacher;
+            delete newItem.homeroomTeacher;
+          }
+          
+          return newItem;
+        }),
         academicRecords: formData.academicRecords.map(record => record.description)
       };
       
+      console.log('변환된 history 데이터:', apiData.history);
+      
       // Call API to update student info
-      await updateStudentInfo(student.studentId, apiData);
+      console.log('학생 정보 업데이트 API 호출 전:', student.studentId, apiData);
+      const result = await updateStudentInfo(student.studentId, apiData);
+      console.log('학생 정보 업데이트 API 호출 결과:', result);
       
       // Show success message
       toast.success('학생 정보가 성공적으로 업데이트되었습니다.');
       
-      // 수정된 데이터를 화면에 반영하기 위해 student 객체 업데이트
-      // 실제 프로덕션 환경에서는 상위 컴포넌트에서 학생 데이터를 새로고침하는 함수를 props로 받아 호출하는 것이 좋습니다.
-      student.studentId = formData.student_id;
-      student.number = formData.student_number;
-      student.classNumber = formData.classroom;
-      student.profileImage = formData.profile_image;
-      student.history = [...formData.history];
-      student.academicRecords = formData.academicRecords.map(record => record.description);
+      // 백엔드에서 최신 데이터를 가져오기 위해 refreshStudentData 함수 호출
+      if (refreshStudentData) {
+        console.log('학생 데이터 새로고침 함수 호출 전...');
+        try {
+          await refreshStudentData();
+          console.log('학생 데이터 새로고침 완료!');
+        } catch (refreshError) {
+          console.error('학생 데이터 새로고침 실패:', refreshError);
+          // 새로고침 실패 시 로컬 업데이트 실행
+          student.studentId = formData.student_id;
+          student.number = formData.student_number;
+          student.classNumber = formData.classroom;
+          student.profileImage = formData.profile_image;
+          student.history = [...formData.history];
+          student.academicRecords = formData.academicRecords.map(record => record.description);
+        }
+      } else {
+        // refreshStudentData가 없는 경우 fallback으로 로컬 객체 업데이트
+        console.warn('refreshStudentData 함수가 전달되지 않았습니다. 로컬 객체만 업데이트합니다.');
+        student.studentId = formData.student_id;
+        student.number = formData.student_number;
+        student.classNumber = formData.classroom;
+        student.profileImage = formData.profile_image;
+        student.history = [...formData.history];
+        student.academicRecords = formData.academicRecords.map(record => record.description);
+      }
       
       // Exit edit mode
       setIsEditing(false);
     } catch (error) {
+      console.error('학생 정보 업데이트 오류:', error);
       toast.error(error.message || '학생 정보 업데이트에 실패했습니다.');
     } finally {
       setIsSubmitting(false);
@@ -518,8 +569,8 @@ const PersonalInfoTab = ({ student, currentUser }) => {
                   />
                   <FormInput 
                     type="text" 
-                    value={history.homeroomTeacher} 
-                    onChange={(e) => handleHistoryChange(index, 'homeroomTeacher', e.target.value)} 
+                    value={history.homeroom_teacher} 
+                    onChange={(e) => handleHistoryChange(index, 'homeroom_teacher', e.target.value)} 
                     placeholder="담임 교사"
                     style={{ flex: 1 }}
                   />
@@ -536,7 +587,7 @@ const PersonalInfoTab = ({ student, currentUser }) => {
                     <TableHeader>{history.grade}학년</TableHeader>
                     <TableData>
                       {history.classNumber}반 {history.number}번 (담임:{" "}
-                      {history.homeroomTeacher})
+                      {history.homeroom_teacher})
                     </TableData>
                   </TableRow>
                 ))}

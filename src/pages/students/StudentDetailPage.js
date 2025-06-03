@@ -86,6 +86,23 @@ const StudentDetailPage = () => {
   // Get current user from store
   const currentUser = useUserStore(state => state.currentUser);
 
+  // 학생 정보를 새로고침하는 함수
+  const refreshStudentData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Fetch student data from API
+      const studentData = await getStudentById(id);
+      setStudent(studentData);
+    } catch (error) {
+      console.error('Failed to refresh student data:', error);
+      setError(error.message || '학생 정보를 새로고침하는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchStudentData = async () => {
       setLoading(true);
@@ -162,7 +179,7 @@ const StudentDetailPage = () => {
     
     switch (activeTab) {
       case 'personal':
-        return <PersonalInfoTab student={student} currentUser={currentUser} />;
+        return <PersonalInfoTab student={student} currentUser={currentUser} refreshStudentData={refreshStudentData} />;
       case 'score':
         // student 객체가 있는지 확인
         if (!student) {

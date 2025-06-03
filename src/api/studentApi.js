@@ -12,24 +12,42 @@ import dummyPersonalInfoData from '../data/dummyPersonalInfoData';
  * @param {string} params.grade - Filter by grade
  * @param {string} params.classNumber - Filter by class number
  * @param {string} params.search - Search by student name
+ * @param {Object} options - Additional options for the request
+ * @param {AbortSignal} options.signal - AbortSignal for request cancellation
  * @returns {Promise} - Promise with students list
  */
-export const getStudents = async (params = {}) => {
+export const getStudents = async (params = {}, options = {}) => {
   try {
-    const response = await apiClient.get('/students', { params });
+    // options 객체에서 signal을 추출하여 요청에 포함
+    const { signal } = options;
+    const response = await apiClient.get('/students', { 
+      params,
+      signal // AbortController의 signal을 전달
+    });
     return response.data;
   } catch (error) {
+    // 요청이 취소된 경우 (AbortError) 오류를 그대로 전파
+    if (error.name === 'AbortError' || error.name === 'CanceledError') {
+      throw error;
+    }
+    
     console.warn('API call failed, using dummy data:', error);
     
     // Filter dummy data based on params
     let filteredData = [...dummyStudentData];
     
     if (params.grade) {
-      filteredData = filteredData.filter(student => student.grade === params.grade);
+      // 문자열과 숫자 비교를 위해 문자열로 변환하여 비교
+      const gradeStr = String(params.grade);
+      filteredData = filteredData.filter(student => String(student.grade) === gradeStr);
+      console.log(`학년 필터링: ${gradeStr}, 결과 수: ${filteredData.length}`);
     }
     
     if (params.classNumber) {
-      filteredData = filteredData.filter(student => student.classNumber === params.classNumber);
+      // 문자열과 숫자 비교를 위해 문자열로 변환하여 비교
+      const classStr = String(params.classNumber);
+      filteredData = filteredData.filter(student => String(student.classNumber) === classStr);
+      console.log(`반 필터링: ${classStr}, 결과 수: ${filteredData.length}`);
     }
     
     if (params.search) {

@@ -499,8 +499,26 @@ const SpecialNotesTab = ({ student, studentUrlId, forceLoad, currentUser }) => {
     
     if (!student) return;
     
+    // 학생 정보 디버깅
+    console.log('%c특기사항 저장 전 학생 정보:', 'color: #3498db; font-weight: bold;', {
+      student,
+      id: student.id,
+      studentId: student.studentId,
+      urlId: studentUrlId
+    });
+    
+    // 학생 ID 처리: id 또는 studentId 사용
+    const studentIdToUse = student.studentId || student.id || studentUrlId;
+    
+    if (!studentIdToUse) {
+      console.error('%c오류: 학생 ID를 찾을 수 없습니다!', 'color: #e74c3c; font-weight: bold;');
+      alert('학생 ID를 찾을 수 없습니다. 페이지를 새로 고침한 후 다시 시도해주세요.');
+      return;
+    }
+    
     const specialNoteData = {
-      studentId: student.id,
+      studentId: studentIdToUse,  // 추출한 학생 ID 사용
+      student: student,          // 원본 학생 객체도 함께 전달
       grade: selectedGrade || student.grade,
       classNumber: student.classNumber,
       teacherId: user?.id,
@@ -512,6 +530,9 @@ const SpecialNotesTab = ({ student, studentUrlId, forceLoad, currentUser }) => {
       },
       note
     };
+    
+    // 디버깅
+    console.log('%c특기사항 저장 데이터:', 'color: #3498db; font-weight: bold;', specialNoteData);
     
     try {
       if (editMode && editingNoteId) {

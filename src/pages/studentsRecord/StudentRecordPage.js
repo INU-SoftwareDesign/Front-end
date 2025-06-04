@@ -5,6 +5,7 @@ import StudentListHeader from "../../components/studentRecord/StudentListHeader"
 import StudentListItem from "../../components/studentRecord/StudentListItem";
 import useStudentStore from "../../store/useStudentStore";
 import useUserStore from "../../stores/useUserStore";
+import * as studentApi from "../../api/studentApi";
 
 const PageContainer = styled.div`
   display: flex;
@@ -55,10 +56,26 @@ const NoDataMessage = styled.div`
   text-align: center;
 `;
 
+const ChildInfoBanner = styled.div`
+  margin: 0 0 16px 0;
+  padding: 12px 16px;
+  background-color: #e3f2fd;
+  border-radius: 8px;
+  font-family: 'Pretendard-Medium', sans-serif;
+  font-size: 16px;
+  color: #1976d2;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+`;
+
 const StudentRecordPage = () => {
   // Get user from Zustand store
   const currentUser = useUserStore(state => state.currentUser);
   const userRole = currentUser?.role || 'teacher';
+  const updateUserInfo = useUserStore(state => state.updateUserInfo);
+  
+  // State for parent's child information
+  const [childInfo, setChildInfo] = useState(null);
   
   // Continue using Zustand for student data
   const { 
@@ -88,8 +105,72 @@ const StudentRecordPage = () => {
         setGrade(String(currentUser.gradeLevel));
         setClass(String(currentUser.classNumber));
       }
+    } else if (currentUser && userRole === 'parent' && childInfo) {
+      // 학부모인 경우 자녀의 학년과 반으로 필터 설정
+      console.log('학부모 자녀 정보 설정:', childInfo.grade, childInfo.classNumber);
+      setGrade(String(childInfo.grade));
+      setClass(String(childInfo.classNumber));
     }
-  }, [currentUser, userRole, setGrade, setClass]);
+  }, [currentUser, userRole, childInfo, setGrade, setClass]);
+  
+  // 학부모인 경우 자녀 정보 가져오기
+  useEffect(() => {
+    const fetchChildInfo = async () => {
+      if (currentUser && currentUser.role === 'parent') {
+        // 학부모 계정에 연결된 자녀 ID 목록
+        let childrenIds = currentUser.childrenIds || [];
+        
+        // childrenIds가 없고 childStudentId가 있는 경우
+        if (childrenIds.length === 0 && currentUser.childStudentId) {
+          const studentId = currentUser.childStudentId;
+          const lastDigits = studentId.slice(-4).replace(/^0+/, '');
+          childrenIds = [studentId, lastDigits];
+          
+          // 사용자 스토어 업데이트
+          updateUserInfo({
+            childrenIds: childrenIds
+          });
+          
+          console.log('자녀 ID 목록 생성 (StudentRecordPage):', childrenIds);
+        }
+        
+        // 자녀 ID가 없는 경우 (개발 환경에서 테스트용)
+        if (childrenIds.length === 0 && process.env.NODE_ENV === 'development') {
+          console.log('%c[StudentRecordPage] 개발 환경 - 더미 자녀 정보 사용', 'color: #e67e22; font-weight: bold;');
+          setChildInfo({
+            id: '20250001',
+            name: '홍길동',
+            grade: '2',
+            classNumber: '1',
+            number: '1'
+          });
+          return;
+        }
+        
+        // 자녀 ID가 있는 경우 학생 정보 조회
+        if (childrenIds.length > 0) {
+          try {
+            // 첫 번째 자녀 ID로 학생 정보 조회
+            const studentData = await studentApi.getStudentById(childrenIds[0]);
+            console.log('%c[StudentRecordPage] 자녀 정보 조회 성공:', 'color: #2ecc71; font-weight: bold;', studentData);
+            setChildInfo(studentData);
+          } catch (error) {
+            console.error('%c[StudentRecordPage] 자녀 정보 조회 실패:', 'color: #e74c3c; font-weight: bold;', error);
+            // 에러 발생 시 더미 데이터 사용
+            setChildInfo({
+              id: '20250001',
+              name: '홍길동',
+              grade: '2',
+              classNumber: '1',
+              number: '1'
+            });
+          }
+        }
+      }
+    };
+    
+    fetchChildInfo();
+  }, [currentUser, updateUserInfo]);
   
   // Fetch students when filters change
   useEffect(() => {
@@ -139,7 +220,35 @@ const StudentRecordPage = () => {
     
     if (userRole === 'parent') {
       // Parents can only access their children's information
-      return currentUser.childrenIds && currentUser.childrenIds.includes(student.id);
+      // 1. Check if student.id is in childrenIds array
+      if (currentUser.childrenIds && currentUser.childrenIds.includes(student.id)) {
+        return true;
+      }
+      
+      // 2. Check if childStudentId matches student.id or student.studentId
+      if (currentUser.childStudentId && 
+          (String(currentUser.childStudentId) === String(student.id) || 
+           String(currentUser.childStudentId) === String(student.studentId))) {
+        return true;
+      }
+      
+      // 3. 자녀 정보가 있는 경우 해당 자녀의 정보만 접근 가능
+      if (childInfo) {
+        // ID 비교
+        if (String(childInfo.id) === String(student.id) || 
+            String(childInfo.studentId) === String(student.studentId)) {
+          return true;
+        }
+        
+        // 학년, 반, 번호 비교
+        if (String(childInfo.grade) === String(student.grade) && 
+            String(childInfo.classNumber) === String(student.classNumber) && 
+            String(childInfo.number) === String(student.number)) {
+          return true;
+        }
+      }
+      
+      return false;
     }
     
     return false;
@@ -147,6 +256,11 @@ const StudentRecordPage = () => {
 
   return (
     <PageContainer>
+      {currentUser && currentUser.role === 'parent' && childInfo && (
+        <ChildInfoBanner>
+          자녀 정보: {childInfo.name} ({childInfo.grade}학년 {childInfo.classNumber}반 {childInfo.number}번)
+        </ChildInfoBanner>
+      )}
       <StudentFilterBar
         userRole={userRole}
         userGrade={formatGrade(selectedGrade)}
@@ -173,6 +287,7 @@ const StudentRecordPage = () => {
               key={student.id} 
               student={student} 
               index={index} 
+              canAccess={canAccessStudent(student)}
             />
           ))
       )}

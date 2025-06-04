@@ -73,6 +73,32 @@ pipeline {
             }
         }
 
+        /*stage('Trivy Scan') {
+            steps {
+                sh '''
+                    # Trivy 설치 (최초 1회만 설치되게 체크 가능)
+                    if ! command -v trivy &> /dev/null; then
+                        echo "Trivy not found. Installing..."
+                        wget -q https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.1_Linux-64bit.deb
+                        sudo dpkg -i trivy_0.50.1_Linux-64bit.deb
+                    fi
+
+                    echo "🔍 Trivy 보안 스캔 시작"
+                    trivy image --exit-code 0 --format json -o trivy-report.json $DOCKER_IMAGE:$TAG
+
+                    if grep -q '"Vulnerabilities": \[' trivy-report.json; then
+                        echo "⚠️ 보안 취약점 발견됨. 슬랙 알림 발송 중..."
+                        curl -X POST -H 'Content-type: application/json' \
+                          --data '{"text":"🚨 Trivy: 보안 취약점이 발견되었습니다! (이미지: $DOCKER_IMAGE:$TAG)"}' \
+                          $SLACK_WEBHOOK_URL
+                    else
+                        echo "✅ 취약점 없음"
+                    fi
+                '''
+            }
+        }*/
+
+
         stage('Docker Push') {
             steps {
                 withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKER_TOKEN')]) {

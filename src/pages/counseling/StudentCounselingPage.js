@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useNavigate, useParams } from 'react-router-dom';
 import useUserStore from '../../stores/useUserStore';
 import counselingApi from '../../api/counselingApi';
+import * as studentApi from '../../api/studentApi';
 import RequestTabContent from './components/RequestTabContent';
 import HistoryTabContent from './components/HistoryTabContent';
 
@@ -51,10 +52,12 @@ const StudentCounselingPage = () => {
   const navigate = useNavigate();
   const { studentId: studentUrlId } = useParams(); // URL에서 학생 ID 가져오기
   const currentUser = useUserStore(state => state.currentUser);
+  const updateUserInfo = useUserStore(state => state.updateUserInfo);
   const [activeTab, setActiveTab] = useState('request');
   const [counselingRecords, setCounselingRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [childInfo, setChildInfo] = useState(null);
   
   // Check if user is a student or parent
   useEffect(() => {
@@ -62,6 +65,90 @@ const StudentCounselingPage = () => {
       navigate('/');
     }
   }, [currentUser, navigate]);
+  
+  // 학부모인 경우 자녀 정보 가져오기 - 별도의 useEffect로 분리하여 무한 호출 방지
+  useEffect(() => {
+    const fetchChildInfo = async () => {
+      if (!currentUser || currentUser.role !== 'parent') return;
+      
+      // 이미 자녀 정보가 있는 경우 다시 호출하지 않음
+      if (childInfo) {
+        console.log('%c[StudentCounselingPage] 이미 자녀 정보가 있어 API 호출 생략', 'color: #3498db; font-weight: bold;', childInfo);
+        return;
+      }
+      
+      // 학부모 계정에 연결된 자녀 ID 목록
+      let childrenIds = currentUser.childrenIds || [];
+      
+      // childrenIds가 없고 childStudentId가 있는 경우
+      if (childrenIds.length === 0 && currentUser.childStudentId) {
+        const studentId = currentUser.childStudentId;
+        const lastDigits = studentId.slice(-4).replace(/^0+/, '');
+        childrenIds = [studentId, lastDigits];
+        
+        // 사용자 스토어 업데이트 - 의존성 배열에서 제외하기 위해 함수 참조를 직접 사용
+        useUserStore.getState().updateUserInfo({
+          childrenIds: childrenIds
+        });
+        
+        console.log('자녀 ID 목록 생성 (StudentCounselingPage):', childrenIds);
+      }
+      
+      // 자녀 ID가 없는 경우 (개발 환경에서 테스트용)
+      if (childrenIds.length === 0 && process.env.NODE_ENV === 'development') {
+        console.log('%c[StudentCounselingPage] 개발 환경 - 더미 자녀 정보 사용', 'color: #e67e22; font-weight: bold;');
+        setChildInfo({
+          id: '20250001',
+          name: '홍길동',
+          grade: '2',
+          classNumber: '1',
+          number: '1'
+        });
+        return;
+      }
+      
+      // 자녀 ID가 있는 경우 학생 정보 조회
+      if (childrenIds.length > 0) {
+        try {
+          // 첫 번째 자녀 ID로 학생 정보 조회
+          const studentData = await studentApi.getStudentById(childrenIds[0]);
+          console.log('%c[StudentCounselingPage] 자녀 정보 조회 성공:', 'color: #2ecc71; font-weight: bold;', studentData);
+          setChildInfo(studentData);
+          
+          // 사용자 스토어에 자녀 정보 업데이트 - 의존성 배열에서 제외하기 위해 함수 참조를 직접 사용
+          useUserStore.getState().updateUserInfo({
+            childName: studentData.name,
+            childGrade: studentData.grade,
+            childClassNumber: studentData.classNumber,
+            childNumber: studentData.number,
+            childDetail: `${studentData.grade}학년 ${studentData.classNumber}반 ${studentData.number}번`
+          });
+        } catch (error) {
+          console.error('%c[StudentCounselingPage] 자녀 정보 조회 실패:', 'color: #e74c3c; font-weight: bold;', error);
+          // 에러 발생 시 더미 데이터 사용
+          const dummyChildInfo = {
+            id: '20250001',
+            name: '홍길동',
+            grade: '2',
+            classNumber: '1',
+            number: '1'
+          };
+          setChildInfo(dummyChildInfo);
+          
+          // 사용자 스토어에 더미 자녀 정보 업데이트 - 의존성 배열에서 제외하기 위해 함수 참조를 직접 사용
+          useUserStore.getState().updateUserInfo({
+            childName: dummyChildInfo.name,
+            childGrade: dummyChildInfo.grade,
+            childClassNumber: dummyChildInfo.classNumber,
+            childNumber: dummyChildInfo.number,
+            childDetail: `${dummyChildInfo.grade}학년 ${dummyChildInfo.classNumber}반 ${dummyChildInfo.number}번`
+          });
+        }
+      }
+    };
+    
+    fetchChildInfo();
+  }, [currentUser, childInfo]); // updateUserInfo 제거하고 childInfo 추가
 
   // 상담 내역 데이터 불러오기
   const fetchCounselingRecords = async () => {
@@ -78,9 +165,29 @@ const StudentCounselingPage = () => {
         studentId = studentUrlId;
       } else if (currentUser.role === 'student') {
         studentId = currentUser.id;
-      } else if (currentUser.role === 'parent' && currentUser.children && currentUser.children.length > 0) {
-        // 부모인 경우 첫 번째 자녀의 ID 사용
-        studentId = currentUser.children[0].id;
+      } else if (currentUser.role === 'parent') {
+        // 부모인 경우 자녀 ID 결정 로직
+        if (childInfo && childInfo.id) {
+          // 1. childInfo에서 자녀 ID 사용 (가장 우선)
+          studentId = childInfo.id;
+          console.log('%c[StudentCounselingPage] 자녀 정보에서 ID 사용:', 'color: #2ecc71; font-weight: bold;', studentId);
+        } else if (currentUser.childStudentId) {
+          // 2. childStudentId 사용
+          studentId = currentUser.childStudentId;
+          console.log('%c[StudentCounselingPage] childStudentId 사용:', 'color: #3498db; font-weight: bold;', studentId);
+        } else if (currentUser.childrenIds && currentUser.childrenIds.length > 0) {
+          // 3. childrenIds 배열의 첫 번째 ID 사용
+          studentId = currentUser.childrenIds[0];
+          console.log('%c[StudentCounselingPage] childrenIds 배열에서 ID 사용:', 'color: #9b59b6; font-weight: bold;', studentId);
+        } else if (currentUser.children && currentUser.children.length > 0) {
+          // 4. 이전 방식 호환성 유지 (children 배열 사용)
+          studentId = currentUser.children[0].id;
+          console.log('%c[StudentCounselingPage] children 배열에서 ID 사용:', 'color: #f39c12; font-weight: bold;', studentId);
+        } else {
+          // 5. 폴백: 개발 환경에서는 더미 ID 사용
+          studentId = '20250001';
+          console.warn('%c[StudentCounselingPage] 자녀 ID를 찾을 수 없어 더미 ID 사용:', 'color: #e74c3c; font-weight: bold;', studentId);
+        }
       }
       
       if (!studentId) {
@@ -160,7 +267,8 @@ const StudentCounselingPage = () => {
       <ContentContainer>
         {activeTab === 'request' ? (
           <RequestTabContent 
-            currentUser={currentUser} 
+            currentUser={currentUser}
+            childInfo={childInfo}
           />
         ) : (
           <HistoryTabContent 

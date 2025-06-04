@@ -211,7 +211,7 @@ const NoDateSelectedMessage = styled.div`
   font-size: 1.1rem;
 `;
 
-const RequestTabContent = ({ currentUser }) => {
+const RequestTabContent = ({ currentUser, childInfo }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [availableTimes, setAvailableTimes] = useState([]);
   const [bookedTimes, setBookedTimes] = useState([]);
@@ -295,16 +295,43 @@ const RequestTabContent = ({ currentUser }) => {
           contactNumber: '010-1234-5678' // In a real app, this would come from the user profile
         }));
       } else if (currentUser.role === 'parent') {
-        setFormData(prev => ({
-          ...prev,
-          name: currentUser.name,
-          studentName: currentUser.childName,
-          gradeClassNumber: currentUser.childDetail,
-          contactNumber: '010-9876-5432' // In a real app, this would come from the user profile
-        }));
+        // 자녀 정보가 있는 경우 사용
+        if (childInfo) {
+          console.log('%c[RequestTabContent] 자녀 정보 사용:', 'color: #2ecc71; font-weight: bold;', childInfo);
+          setFormData(prev => ({
+            ...prev,
+            name: currentUser.name,
+            studentName: childInfo.name,
+            gradeClassNumber: `${childInfo.grade}학년 ${childInfo.classNumber}반 ${childInfo.number}번`,
+            contactNumber: currentUser.contactNumber || '010-9876-5432' // In a real app, this would come from the user profile
+          }));
+        } else if (currentUser.childName && currentUser.childDetail) {
+          // 기존 방식 (스토어에 저장된 정보 사용)
+          console.log('%c[RequestTabContent] 스토어에 저장된 자녀 정보 사용:', 'color: #3498db; font-weight: bold;', { 
+            childName: currentUser.childName, 
+            childDetail: currentUser.childDetail 
+          });
+          setFormData(prev => ({
+            ...prev,
+            name: currentUser.name,
+            studentName: currentUser.childName,
+            gradeClassNumber: currentUser.childDetail,
+            contactNumber: currentUser.contactNumber || '010-9876-5432' // In a real app, this would come from the user profile
+          }));
+        } else {
+          // 자녀 정보가 없는 경우
+          console.warn('%c[RequestTabContent] 자녀 정보 없음:', 'color: #e74c3c; font-weight: bold;');
+          setFormData(prev => ({
+            ...prev,
+            name: currentUser.name,
+            studentName: '정보 없음',
+            gradeClassNumber: '정보 없음',
+            contactNumber: currentUser.contactNumber || '010-9876-5432' // In a real app, this would come from the user profile
+          }));
+        }
       }
     }
-  }, [currentUser]);
+  }, [currentUser, childInfo]);
   
   // Validate form
   useEffect(() => {
@@ -336,8 +363,49 @@ const RequestTabContent = ({ currentUser }) => {
     
     try {
       // 상담 신청 API 호출을 위한 데이터 구성
+      let studentIdToUse;
+      
+      if (currentUser.role === 'student') {
+        // 학생인 경우 자신의 ID 사용
+        studentIdToUse = currentUser.id;
+      } else if (currentUser.role === 'parent') {
+        // 학부모인 경우 자녀 ID 결정 로직
+        if (childInfo && childInfo.id) {
+          // 1. childInfo에서 자녀 ID 사용 (가장 우선)
+          studentIdToUse = childInfo.id;
+          console.log('%c[RequestTabContent] 자녀 정보에서 ID 사용:', 'color: #2ecc71; font-weight: bold;', studentIdToUse);
+        } else if (currentUser.childStudentId) {
+          // 2. childStudentId 사용
+          studentIdToUse = currentUser.childStudentId;
+          console.log('%c[RequestTabContent] childStudentId 사용:', 'color: #3498db; font-weight: bold;', studentIdToUse);
+        } else if (currentUser.childrenIds && currentUser.childrenIds.length > 0) {
+          // 3. childrenIds 배열의 첫 번째 ID 사용
+          studentIdToUse = currentUser.childrenIds[0];
+          console.log('%c[RequestTabContent] childrenIds 배열에서 ID 사용:', 'color: #9b59b6; font-weight: bold;', studentIdToUse);
+        } else {
+          // 4. 폴백: 개발 환경에서는 더미 ID 사용
+          studentIdToUse = '20250001';
+          console.warn('%c[RequestTabContent] 자녀 ID를 찾을 수 없어 더미 ID 사용:', 'color: #e74c3c; font-weight: bold;', studentIdToUse);
+        }
+      }
+      
+      // 학생 ID 처리 로직 (8자리 숫자 형식인 경우 뒤의 4자리에서 앞의 0 제거)
+      if (studentIdToUse) {
+        // 문자열로 변환
+        const studentIdStr = String(studentIdToUse);
+        
+        // 8자리 숫자 형식인지 확인 (예: 20250100)
+        if (studentIdStr.length === 8 && /^\d+$/.test(studentIdStr)) {
+          // 뒤의 4자리 추출 후 앞의 0 제거 (예: 0100 -> 100)
+          const last4Digits = studentIdStr.substring(4);
+          const processedId = parseInt(last4Digits, 10);
+          console.log(`학생 ID 변환: ${studentIdStr} -> ${processedId}`);
+          studentIdToUse = processedId;
+        }
+      }
+      
       const requestData = {
-        studentId: currentUser.role === 'student' ? currentUser.id : currentUser.childId,
+        studentId: studentIdToUse,
         teacherId: '1', // 테스트용 교사 ID, 실제로는 선택한 교사 ID를 사용해야 함
         counselingDate: formData.counselingDate,
         counselingTime: formData.counselingTime,

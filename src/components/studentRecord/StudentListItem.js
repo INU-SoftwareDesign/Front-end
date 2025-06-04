@@ -110,7 +110,28 @@ const StudentListItem = ({ student, index, canAccess: propCanAccess }) => {
     
     if (currentUser.role === 'parent') {
       // Parents can only access their children's information
-      return currentUser.childrenIds && currentUser.childrenIds.includes(student.id);
+      // 1. Check if student.id is in childrenIds array
+      if (currentUser.childrenIds && currentUser.childrenIds.includes(student.id)) {
+        return true;
+      }
+      
+      // 2. Check if childStudentId matches student.id or student.studentId
+      if (currentUser.childStudentId && 
+          (String(currentUser.childStudentId) === String(student.id) || 
+           String(currentUser.childStudentId) === String(student.studentId))) {
+        return true;
+      }
+      
+      // 3. Check if the student number, grade and class match with what we expect for the parent's child
+      if (currentUser.childGrade && currentUser.childClassNumber && currentUser.childNumber) {
+        if (String(currentUser.childGrade) === String(student.grade) &&
+            String(currentUser.childClassNumber) === String(student.classNumber) &&
+            String(currentUser.childNumber) === String(student.number)) {
+          return true;
+        }
+      }
+      
+      return false;
     }
     
     return false;

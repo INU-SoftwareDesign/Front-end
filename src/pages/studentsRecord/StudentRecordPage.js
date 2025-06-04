@@ -220,14 +220,32 @@ const StudentRecordPage = () => {
     
     if (userRole === 'parent') {
       // Parents can only access their children's information
+      // 1. Check if student.id is in childrenIds array
       if (currentUser.childrenIds && currentUser.childrenIds.includes(student.id)) {
         return true;
       }
       
-      // 자녀 정보가 있는 경우 해당 자녀의 정보만 접근 가능
-      if (childInfo && (String(childInfo.id) === String(student.id) || 
-          String(childInfo.studentId) === String(student.studentId))) {
+      // 2. Check if childStudentId matches student.id or student.studentId
+      if (currentUser.childStudentId && 
+          (String(currentUser.childStudentId) === String(student.id) || 
+           String(currentUser.childStudentId) === String(student.studentId))) {
         return true;
+      }
+      
+      // 3. 자녀 정보가 있는 경우 해당 자녀의 정보만 접근 가능
+      if (childInfo) {
+        // ID 비교
+        if (String(childInfo.id) === String(student.id) || 
+            String(childInfo.studentId) === String(student.studentId)) {
+          return true;
+        }
+        
+        // 학년, 반, 번호 비교
+        if (String(childInfo.grade) === String(student.grade) && 
+            String(childInfo.classNumber) === String(student.classNumber) && 
+            String(childInfo.number) === String(student.number)) {
+          return true;
+        }
       }
       
       return false;
@@ -269,6 +287,7 @@ const StudentRecordPage = () => {
               key={student.id} 
               student={student} 
               index={index} 
+              canAccess={canAccessStudent(student)}
             />
           ))
       )}

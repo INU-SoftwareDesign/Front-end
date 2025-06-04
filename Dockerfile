@@ -21,4 +21,6 @@ COPY public/.well-known ./build/.well-known
 
 CMD ["serve", "-s", "build", "-l", "80"]
 
+#credential -> https://api-dev.소설고등학교.site로 변경!
+
 #수정 1

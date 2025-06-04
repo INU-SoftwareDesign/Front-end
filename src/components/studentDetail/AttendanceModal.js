@@ -241,6 +241,27 @@ const AttendanceModal = ({
     reason: ''
   });
   
+  // 서버 명명 규칙에 맞게 attendanceType 변환하는 함수
+  const getServerAttendanceType = (type) => {
+    switch (type) {
+      case 'absent': return 'absence';
+      case 'tardy': return 'lateness';
+      default: return type;
+    }
+  };
+  
+  // UI 표시용 attendanceType으로 변환하는 함수 (서버 타입 → UI 타입)
+  // 현재 사용되지 않지만 향후 사용을 위해 주석으로 보존
+  /*
+  const getUIAttendanceType = (type) => {
+    switch (type) {
+      case 'absence': return 'absent';
+      case 'lateness': return 'tardy';
+      default: return type;
+    }
+  };
+  */
+  
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -252,8 +273,15 @@ const AttendanceModal = ({
       });
       setError(null);
       setSuccess(null);
+      
+      // 디버깅 정보 출력
+      console.log('모달 열림 - 데이터 확인:', {
+        attendanceType,
+        serverType: getServerAttendanceType(attendanceType),
+        details
+      });
     }
-  }, [isOpen, attendanceType, reasonType]);
+  }, [isOpen, attendanceType, reasonType, details]);
   
   if (!isOpen) return null;
   
@@ -305,11 +333,15 @@ const AttendanceModal = ({
       const processedStudentId = typeof studentId === 'string' ? studentId : String(studentId);
       console.log(`출결 데이터 추가 요청: 학생 ID ${processedStudentId}`);
       
+      // 서버 명명 규칙에 맞게 attendanceType 변환
+      const serverAttendanceType = getServerAttendanceType(formData.attendanceType);
+      console.log(`API 요청용 출결 타입 변환: ${formData.attendanceType} → ${serverAttendanceType}`);
+      
       // Prepare data for API
       const attendanceData = {
         grade: grade,
         year: currentYear,
-        attendanceType: formData.attendanceType,
+        attendanceType: serverAttendanceType, // 변환된 타입 사용
         reasonType: formData.reasonType,
         date: formData.date,
         reason: formData.reason,
@@ -325,12 +357,15 @@ const AttendanceModal = ({
       // 저장 성공 메시지 표시
       setSuccess('출결 데이터가 성공적으로 저장되었습니다.');
       
-      // Call the original onSave function to update UI
+      // Call the original onSave function to update UI with the response data
       if (typeof onSave === 'function') {
+        // 저장된 데이터와 API 응답을 함께 전달하여 부모 컴포넌트에서 데이터 갱신 처리
         onSave({
           ...formData,
           attendanceType: formData.attendanceType || attendanceType,
           reasonType: formData.reasonType || reasonType,
+          response: response,  // Include the API response
+          success: true        // 성공 여부 표시
         });
       }
       

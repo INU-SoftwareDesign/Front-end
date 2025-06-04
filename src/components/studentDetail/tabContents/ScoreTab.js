@@ -65,6 +65,8 @@ const NoDataContainer = styled.div`
   background-color: #f9f9f9;
   border-radius: 8px;
   padding: 24px;
+  border: 1px dashed #ddd;
+  margin-top: 16px;
 `;
 
 const NoDataText = styled.p`
@@ -72,6 +74,15 @@ const NoDataText = styled.p`
   font-size: 18px;
   color: #666;
   text-align: center;
+  line-height: 1.5;
+  
+  &::before {
+    content: '\2139';
+    display: block;
+    font-size: 32px;
+    color: #1D4EB0;
+    margin-bottom: 12px;
+  }
 `;
 
 const ScoreCardContainer = styled.div`
@@ -194,7 +205,7 @@ const ScoreTab = ({ student, studentUrlId, forceLoad = false }) => {
         const subjectNames = processedSubjects.map(subject => subject.name);
         setAvailableSubjects(['all', ...subjectNames]);
       } else {
-        console.log('API에서 데이터가 없습니다');
+        console.log(`API에서 데이터가 없습니다: 학년=${currentGrade}, 학기=${semesterValue}`);
         setGradeData(null);
         setError('해당 학년 학기에 성적 데이터가 없습니다.');
       }
@@ -509,13 +520,19 @@ const ScoreTab = ({ student, studentUrlId, forceLoad = false }) => {
     if (cachedData.current[cacheKey]) {
       console.log(`캐시에서 ${cacheKey} 데이터 가져오기`);
       setGradeData(cachedData.current[cacheKey]);
+      setError(null); // 오류 상태 초기화
       
       // 과목 목록 업데이트
       const subjectNames = cachedData.current[cacheKey].subjects.map(subject => subject.name);
       setAvailableSubjects(['all', ...subjectNames]);
     } else {
-      console.log(`${cacheKey} 데이터가 캐시에 없음, API 호출 필요`);
-      // 캐시에 없는 경우에만 API 호출
+      console.log(`${cacheKey} 데이터가 캐시에 없음`);
+      // 캐시에 없는 경우 즉시 데이터 초기화 및 오류 메시지 표시
+      setGradeData(null);
+      setError(`${newGrade}학년 ${selectedSemester}에 해당하는 성적 데이터가 없습니다.`);
+      setAvailableSubjects(['all']); // 과목 목록 초기화
+      
+      // API 호출을 위한 상태 설정
       setIsUserAction(true);
     }
   };
@@ -533,13 +550,19 @@ const ScoreTab = ({ student, studentUrlId, forceLoad = false }) => {
     if (cachedData.current[cacheKey]) {
       console.log(`캐시에서 ${cacheKey} 데이터 가져오기`);
       setGradeData(cachedData.current[cacheKey]);
+      setError(null); // 오류 상태 초기화
       
       // 과목 목록 업데이트
       const subjectNames = cachedData.current[cacheKey].subjects.map(subject => subject.name);
       setAvailableSubjects(['all', ...subjectNames]);
     } else {
-      console.log(`${cacheKey} 데이터가 캐시에 없음, API 호출 필요`);
-      // 캐시에 없는 경우에만 API 호출
+      console.log(`${cacheKey} 데이터가 캐시에 없음`);
+      // 캐시에 없는 경우 즉시 데이터 초기화 및 오류 메시지 표시
+      setGradeData(null);
+      setError(`${selectedGrade}학년 ${newSemester}에 해당하는 성적 데이터가 없습니다.`);
+      setAvailableSubjects(['all']); // 과목 목록 초기화
+      
+      // API 호출을 위한 상태 설정
       setIsUserAction(true);
     }
   };
@@ -609,11 +632,17 @@ const ScoreTab = ({ student, studentUrlId, forceLoad = false }) => {
       {isLoading ? (
         <LoadingMessage />
       ) : error ? (
-        <ErrorMessage />
+        <NoDataContainer>
+          <NoDataText>
+            {error === '해당 학년 학기에 성적 데이터가 없습니다.' 
+              ? `${selectedGrade}학년 ${selectedSemester}에 해당하는 성적 데이터가 없습니다.` 
+              : error}
+          </NoDataText>
+        </NoDataContainer>
       ) : !gradeData ? (
         <NoDataContainer>
           <NoDataText>
-            선택한 학년/학기에 해당하는 성적 데이터가 존재하지 않습니다.
+            {selectedGrade}학년 {selectedSemester}에 해당하는 성적 데이터가 존재하지 않습니다.
           </NoDataText>
         </NoDataContainer>
       ) : (

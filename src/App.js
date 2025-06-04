@@ -11,6 +11,9 @@ import styled from "styled-components";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AuthRoute from "./components/auth/AuthRoute";
 
+// Import UserProvider
+import { UserProvider } from "./contexts/UserContext";
+
 import Navbar from "./components/navigation/Navbar";
 import Sidebar from "./components/navigation/Sidebar";
 
@@ -81,21 +84,23 @@ function App() {
   }, [checkAuth]);
   
   return (
-    <Router>
-      <AppLayout>
-        <Routes>
-          <Route path="/login" element={<AuthRoute><LoginPage /></AuthRoute>} />
-          <Route path="/register" element={<AuthRoute><RegisterPage /></AuthRoute>} />
-          <Route path="/" element={<ProtectedRoute><MainPage /></ProtectedRoute>} />
-          <Route path="/students" element={<ProtectedRoute><StudentRecordPage /></ProtectedRoute>} />
-          <Route path="/student/:id" element={<ProtectedRoute><StudentDetailPage /></ProtectedRoute>} />
-          <Route path="/grades" element={<ProtectedRoute><GradeManagementPage /></ProtectedRoute>} />
-          <Route path="/grades/edit/:id" element={<ProtectedRoute><GradeEditPage /></ProtectedRoute>} />
-          <Route path="/counseling" element={<ProtectedRoute><CounselingPage /></ProtectedRoute>} />
-          <Route path="/student-counseling" element={<ProtectedRoute><StudentCounselingPage /></ProtectedRoute>} />
-        </Routes>
-      </AppLayout>
-    </Router>
+    <UserProvider>
+      <Router>
+        <AppLayout>
+          <Routes>
+            <Route path="/login" element={<AuthRoute><LoginPage /></AuthRoute>} />
+            <Route path="/register" element={<AuthRoute><RegisterPage /></AuthRoute>} />
+            <Route path="/" element={<ProtectedRoute><MainPage /></ProtectedRoute>} />
+            <Route path="/students" element={<ProtectedRoute><StudentRecordPage /></ProtectedRoute>} />
+            <Route path="/student/:id" element={<ProtectedRoute><StudentDetailPage /></ProtectedRoute>} />
+            <Route path="/grades" element={<ProtectedRoute><GradeManagementPage /></ProtectedRoute>} />
+            <Route path="/grades/edit/:id" element={<ProtectedRoute><GradeEditPage /></ProtectedRoute>} />
+            <Route path="/counseling" element={<ProtectedRoute><CounselingPage /></ProtectedRoute>} />
+            <Route path="/student-counseling" element={<ProtectedRoute><StudentCounselingPage /></ProtectedRoute>} />
+          </Routes>
+        </AppLayout>
+      </Router>
+    </UserProvider>
   );
 }
 

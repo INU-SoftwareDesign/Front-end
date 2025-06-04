@@ -9,10 +9,9 @@ import PersonalInfoTab from '../../components/studentDetail/tabContents/Personal
 import ScoreTab from '../../components/studentDetail/tabContents/ScoreTab';
 import AttendanceTab from '../../components/studentDetail/tabContents/AttendanceTab';
 import SpecialNotesTab from '../../components/studentDetail/tabContents/SpecialNotesTab';
-import VolunteerTab from '../../components/studentDetail/tabContents/VolunteerTab';
-import ReadingTab from '../../components/studentDetail/tabContents/ReadingTab';
 import CounselingTab from '../../components/studentDetail/tabContents/CounselingTab';
 import FeedbackTab from '../../components/studentDetail/tabContents/FeedbackTab';
+import ReportTab from '../../components/studentDetail/tabContents/ReportTab';
 
 const PageContainer = styled.div`
   padding: 24px;
@@ -81,9 +80,28 @@ const StudentDetailPage = () => {
   const [scoreTabLoaded, setScoreTabLoaded] = useState(false);
   const [counselingTabLoaded, setCounselingTabLoaded] = useState(false);
   const [attendanceTabLoaded, setAttendanceTabLoaded] = useState(false);
+  const [feedbackTabLoaded, setFeedbackTabLoaded] = useState(false);
+  const [specialNotesTabLoaded, setSpecialNotesTabLoaded] = useState(false);
   
   // Get current user from store
   const currentUser = useUserStore(state => state.currentUser);
+
+  // 학생 정보를 새로고침하는 함수
+  const refreshStudentData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Fetch student data from API
+      const studentData = await getStudentById(id);
+      setStudent(studentData);
+    } catch (error) {
+      console.error('Failed to refresh student data:', error);
+      setError(error.message || '학생 정보를 새로고침하는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -130,6 +148,20 @@ const StudentDetailPage = () => {
       setAttendanceTabLoaded(prev => !prev);
       console.log('출결 탭 클릭됨, API 호출 트리거');
     }
+    
+    // 피드백 탭을 클릭했을 때 로드 상태 업데이트
+    if (tabId === 'feedback') {
+      // 현재 값의 반대로 설정하여 매번 변경되도록 함
+      setFeedbackTabLoaded(prev => !prev);
+      console.log('피드백 탭 클릭됨, API 호출 트리거');
+    }
+    
+    // 특기사항 탭을 클릭했을 때 로드 상태 업데이트
+    if (tabId === 'specialNotes') {
+      // 현재 값의 반대로 설정하여 매번 변경되도록 함
+      setSpecialNotesTabLoaded(prev => !prev);
+      console.log('특기사항 탭 클릭됨, API 호출 트리거');
+    }
   };
 
   // 탭 콘텐츠 렌더링 전에 디버깅 로그 추가
@@ -139,12 +171,15 @@ const StudentDetailPage = () => {
       activeTab, 
       studentId: student?.studentId, 
       scoreTabLoaded,
-      counselingTabLoaded
+      counselingTabLoaded,
+      attendanceTabLoaded,
+      feedbackTabLoaded,
+      specialNotesTabLoaded
     });
     
     switch (activeTab) {
       case 'personal':
-        return <PersonalInfoTab student={student} currentUser={currentUser} />;
+        return <PersonalInfoTab student={student} currentUser={currentUser} refreshStudentData={refreshStudentData} />;
       case 'score':
         // student 객체가 있는지 확인
         if (!student) {
@@ -162,16 +197,26 @@ const StudentDetailPage = () => {
           studentUrlId={id} // URL에서 가져온 학생 ID 전달
         />;
       case 'specialNotes':
-        return <SpecialNotesTab student={student} />;
-      case 'volunteer':
-        return <VolunteerTab student={student} />;
-      case 'reading':
-        return <ReadingTab student={student} />;
+        console.log('SpecialNotesTab 렌더링 전 데이터:', { 
+          urlId: id, 
+          studentId: student?.studentId, 
+          specialNotesTabLoaded,
+          currentUser: currentUser
+        });
+        return <SpecialNotesTab 
+          student={student} 
+          studentUrlId={id} 
+          forceLoad={specialNotesTabLoaded} 
+          currentUser={currentUser} 
+        />;
+      case 'report':
+        return <ReportTab studentId={student?.studentId} studentUrlId={id} />;
       case 'counseling':
         console.log('CounselingTab 렌더링 전 데이터:', { urlId: id, studentId: student?.studentId, counselingTabLoaded });
         return <CounselingTab student={student} studentUrlId={id} forceLoad={counselingTabLoaded} currentUser={currentUser} />;
       case 'feedback':
-        return <FeedbackTab student={student} />;
+        console.log('FeedbackTab 렌더링 전 데이터:', { urlId: id, studentId: student?.studentId, feedbackTabLoaded });
+        return <FeedbackTab student={student} studentUrlId={id} forceLoad={feedbackTabLoaded} currentUser={currentUser} />;
       default:
         return <PersonalInfoTab student={student} currentUser={currentUser} />;
     }

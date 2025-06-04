@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'mario322/react-app'
+        DOCKER_IMAGE = 'mario322/react-app-test'
+        SLACK_WEBHOOK_URL = 'https://hooks.slack.com/services/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'
     }
 
     stages {
@@ -46,6 +47,7 @@ pipeline {
             }
         }*/
 
+/*
 /*
         stage('SonarQube Analysis') {
             steps {

@@ -5,6 +5,8 @@ import 'react-calendar/dist/Calendar.css';
 import { useNavigate } from 'react-router-dom';
 import useUserStore from '../../stores/useUserStore';
 import counselingApi from '../../api/counselingApi';
+import * as studentApi from '../../api/studentApi';
+import { useRef } from 'react';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -12,6 +14,45 @@ const PageContainer = styled.div`
   max-width: 1200px;
   margin: 0 auto;
   font-family: 'Pretendard-Regular', sans-serif;
+`;
+
+const TabContainer = styled.div`
+  display: flex;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e0e0e0;
+`;
+
+const Tab = styled.div`
+  padding: 12px 24px;
+  cursor: pointer;
+  font-weight: ${props => props.active ? 'bold' : 'normal'};
+  color: ${props => props.active ? '#1D4EB0' : '#666'};
+  border-bottom: ${props => props.active ? '2px solid #1D4EB0' : 'none'};
+  transition: all 0.2s ease;
+  
+  &:hover {
+    color: #1D4EB0;
+  }
+`;
+
+const FilterContainer = styled.div`
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: center;
+`;
+
+const FilterLabel = styled.label`
+  font-size: 0.9rem;
+  color: #666;
+`;
+
+const FilterSelect = styled.select`
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  min-width: 100px;
 `;
 
 const RejectButton = styled.button`
@@ -183,11 +224,20 @@ const Badge = styled.span`
 
 const StatusBadge = styled.span`
   background-color: ${props => {
+    // 영문 상태값 처리
     switch(props.status) {
-      case 'pending': return '#FFC107';
-      case 'scheduled': return '#2196F3';
-      case 'completed': return '#4CAF50';
-      default: return '#9E9E9E';
+      case 'pending': return '#FFC107'; // 노란색 - 신청
+      case 'scheduled': return '#2196F3'; // 파란색 - 예약확정
+      case 'completed': return '#4CAF50'; // 초록색 - 완료
+      case 'canceled': return '#F44336'; // 빨간색 - 취소
+      
+      // 한글 상태값 처리
+      case '신청': return '#FFC107'; // 노란색
+      case '예약확정': return '#2196F3'; // 파란색
+      case '완료': return '#4CAF50'; // 초록색
+      case '취소': return '#F44336'; // 빨간색
+      
+      default: return '#9E9E9E'; // 회색 - 기본값
     }
   }};
   color: white;
@@ -269,6 +319,17 @@ const ModalOverlay = styled.div`
 `;
 
 const ModalContainer = styled.div`
+  background-color: white;
+  border-radius: 8px;
+  padding: 24px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+`;
+
+const ModalContent = styled.div`
   background-color: white;
   border-radius: 8px;
   padding: 24px;
@@ -408,6 +469,19 @@ const CounselingPage = () => {
   const [resultContent, setResultContent] = useState('');
   const [counselingDate, setCounselingDate] = useState('');
   const [counselingTime, setCounselingTime] = useState('');
+  
+  // 탭 관련 상태
+  const [activeTab, setActiveTab] = useState('myCounselings'); // 'myCounselings' 또는 'otherStudents'
+  
+  // 다른 학생 상담 내역 조회 관련 상태
+  const [selectedGrade, setSelectedGrade] = useState('');
+  const [selectedClass, setSelectedClass] = useState('');
+  const [filteredStudents, setFilteredStudents] = useState([]);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [studentCounselingRecords, setStudentCounselingRecords] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [isStudentCounselingModalOpen, setIsStudentCounselingModalOpen] = useState(false);
+  const [selectedStudentCounseling, setSelectedStudentCounseling] = useState(null);
 
   // Check if user is a teacher
   useEffect(() => {
@@ -417,72 +491,207 @@ const CounselingPage = () => {
   }, [currentUser, navigate]);
 
   // Load counseling data
-  useEffect(() => {
-    if (currentUser && currentUser.id) {
-      // 상담 신청 내역 가져오기 (status=신청)
-      loadPendingCounselings();
-      
-      // 상담 예정 내역 가져오기 (status=예약확정)
-      loadScheduledCounselings();
-      
-      // 상담 완료 내역 가져오기 (status=완료)
-      loadCompletedCounselings();
-    }
-  }, [currentUser]);
-  
-  // 상담 신청 내역 가져오기
   const loadPendingCounselings = async () => {
+    if (!currentUser || !currentUser.id) {
+      console.error('사용자 정보가 없어 상담 신청 내역을 로드할 수 없습니다.');
+      return;
+    }
+    
+    console.log('상담 신청 내역 로딩 시작, 사용자 ID:', currentUser.id);
     try {
+      // API 호출 전 로그
+      console.log('API 호출 직전 - getTeacherCounselingRequests:', currentUser.id, { status: '신청' });
       const response = await counselingApi.getTeacherCounselingRequests(currentUser.id, { status: '신청' });
-      if (response.data && response.data.success) {
-        // 날짜 기준 오름차순 정렬
-        const sortedData = [...response.data.data].sort((a, b) => {
-          return new Date(a.counselingDate) - new Date(b.counselingDate);
-        });
-        setPendingCounselings(sortedData);
+      console.log('API 응답 (신청):', response);
+      
+      // 다양한 응답 구조 처리
+      if (response && response.data) {
+        let counselingsData = [];
+        
+        // response.data.counselings가 있는 경우 (정상 응답)
+        if (response.data.counselings) {
+          counselingsData = response.data.counselings;
+          console.log('상담 신청 내역 로드 성공 (counselings 형식):', counselingsData);
+        }
+        // response.data.data가 있는 경우 (대체 형식)
+        else if (response.data.data) {
+          counselingsData = response.data.data;
+          console.log('상담 신청 내역 로드 성공 (data 형식):', counselingsData);
+        }
+        // response.data 자체가 배열인 경우
+        else if (Array.isArray(response.data)) {
+          counselingsData = response.data;
+          console.log('상담 신청 내역 로드 성공 (배열 형식):', counselingsData);
+        }
+        
+        // 배열인지 한번 더 확인
+        if (Array.isArray(counselingsData)) {
+          setPendingCounselings(counselingsData);
+        } else {
+          console.error('상담 신청 내역 데이터가 배열이 아닙니다:', counselingsData);
+          setPendingCounselings([]);
+        }
+      } else {
+        setPendingCounselings([]);
+        console.error('상담 신청 내역 로딩 실패: 서버 응답 오류');
       }
     } catch (error) {
+      setPendingCounselings([]);
       console.error('상담 신청 내역 로딩 실패:', error);
       console.error('상담 신청 내역을 불러오는데 실패했습니다.');
     }
   };
-  
-  // 상담 예정 내역 가져오기
+
   const loadScheduledCounselings = async () => {
+    if (!currentUser || !currentUser.id) {
+      console.error('사용자 정보가 없어 상담 예정 내역을 로드할 수 없습니다.');
+      return;
+    }
+    
+    console.log('상담 예정 내역 로딩 시작, 사용자 ID:', currentUser.id);
     try {
-      // API 호출하여 예약확정 상태의 상담 일정 가져오기
+      // API 호출 전 로그
+      console.log('API 호출 직전 - getTeacherScheduledCounselings:', currentUser.id, { status: '예약확정' });
       const response = await counselingApi.getTeacherScheduledCounselings(currentUser.id, { status: '예약확정' });
+      console.log('API 응답 (예약확정):', response);
       
-      if (response.data && response.data.success) {
-        // 날짜 기준 오름차순 정렬
-        const sortedData = [...response.data.data].sort((a, b) => {
-          return new Date(a.counselingDate) - new Date(b.counselingDate);
-        });
+      // 다양한 응답 구조 처리
+      if (response && response.data) {
+        let counselingsData = [];
         
-        console.log('상담 예정 내역 로딩 성공:', sortedData);
-        setScheduledCounselings(sortedData);
+        // response.data.counselings가 있는 경우 (정상 응답)
+        if (response.data.counselings) {
+          counselingsData = response.data.counselings;
+          console.log('상담 예정 내역 로드 성공 (counselings 형식):', counselingsData);
+        }
+        // response.data.data가 있는 경우 (대체 형식)
+        else if (response.data.data) {
+          counselingsData = response.data.data;
+          console.log('상담 예정 내역 로드 성공 (data 형식):', counselingsData);
+        }
+        // response.data 자체가 배열인 경우
+        else if (Array.isArray(response.data)) {
+          counselingsData = response.data;
+          console.log('상담 예정 내역 로드 성공 (배열 형식):', counselingsData);
+        }
+        
+        // 배열인지 한번 더 확인
+        if (Array.isArray(counselingsData)) {
+          setScheduledCounselings(counselingsData);
+        } else {
+          console.error('상담 예정 내역 데이터가 배열이 아닙니다:', counselingsData);
+          setScheduledCounselings([]);
+        }
+      } else {
+        setScheduledCounselings([]);
+        console.error('상담 예정 내역 로딩 실패: 서버 응답 오류');
       }
     } catch (error) {
+      setScheduledCounselings([]);
       console.error('상담 예정 내역 로딩 실패:', error);
       console.error('상담 예정 내역을 불러오는데 실패했습니다.');
     }
   };
-  
-  // 상담 완료 내역 가져오기
+
   const loadCompletedCounselings = async () => {
+    if (!currentUser || !currentUser.id) {
+      console.error('사용자 정보가 없어 상담 완료 내역을 로드할 수 없습니다.');
+      return;
+    }
+    
+    console.log('상담 완료 내역 로딩 시작, 사용자 ID:', currentUser.id);
     try {
+      // API 호출 전 로그
+      console.log('API 호출 직전 - getTeacherScheduledCounselings:', currentUser.id, { status: '완료' });
       const response = await counselingApi.getTeacherScheduledCounselings(currentUser.id, { status: '완료' });
-      if (response.data && response.data.success) {
-        setCompletedCounselings(response.data.data);
+      console.log('API 응답 (완료):', response);
+      
+      // 다양한 응답 구조 처리
+      if (response && response.data) {
+        let counselingsData = [];
+        
+        // response.data.counselings가 있는 경우 (정상 응답)
+        if (response.data.counselings) {
+          counselingsData = response.data.counselings;
+          console.log('상담 완료 내역 로드 성공 (counselings 형식):', counselingsData);
+        }
+        // response.data.data가 있는 경우 (대체 형식)
+        else if (response.data.data) {
+          counselingsData = response.data.data;
+          console.log('상담 완료 내역 로드 성공 (data 형식):', counselingsData);
+        }
+        // response.data 자체가 배열인 경우
+        else if (Array.isArray(response.data)) {
+          counselingsData = response.data;
+          console.log('상담 완료 내역 로드 성공 (배열 형식):', counselingsData);
+        }
+        
+        // 배열인지 한번 더 확인
+        if (Array.isArray(counselingsData)) {
+          setCompletedCounselings(counselingsData);
+        } else {
+          console.error('상담 완료 내역 데이터가 배열이 아닙니다:', counselingsData);
+          setCompletedCounselings([]);
+        }
+      } else {
+        setCompletedCounselings([]);
+        console.error('상담 완료 내역 로딩 실패: 서버 응답 오류');
       }
     } catch (error) {
+      setCompletedCounselings([]);
       console.error('상담 완료 내역 로딩 실패:', error);
       console.error('상담 완료 내역을 불러오는데 실패했습니다.');
     }
   };
 
+  useEffect(() => {
+    console.log('CounselingPage useEffect 실행, 현재 사용자:', currentUser);
+    if (currentUser && activeTab === 'myCounselings') {
+      console.log('상담 API 호출 시작, 사용자 ID:', currentUser.id);
+      loadPendingCounselings();
+      loadScheduledCounselings();
+      loadCompletedCounselings();
+    } else {
+      console.log('API 호출 조건 미충족:', { 
+        '사용자 존재': !!currentUser, 
+        '사용자 ID 존재': !!(currentUser && currentUser.id), 
+        '활성 탭이 myCounselings': activeTab === 'myCounselings' 
+      });
+    }
+  }, [currentUser, activeTab]);
+
   // Get all counselings for calendar display
   const allCounselings = [...pendingCounselings, ...scheduledCounselings, ...completedCounselings];
+  
+  // 디버깅용 로그 추가
+  useEffect(() => {
+    console.log('상담 데이터 현황:', {
+      '신청 상담 수': pendingCounselings.length,
+      '예정 상담 수': scheduledCounselings.length,
+      '완료 상담 수': completedCounselings.length,
+      '캘린더용 전체 상담 수': allCounselings.length
+    });
+    
+    // 상담 데이터의 날짜 형식 확인
+    if (pendingCounselings.length > 0) {
+      console.log('신청 상담 데이터 예시:', pendingCounselings[0]);
+      console.log('신청 상담 날짜 형식:', pendingCounselings[0].counselingDate);
+    }
+    
+    if (scheduledCounselings.length > 0) {
+      console.log('예정 상담 데이터 예시:', scheduledCounselings[0]);
+      console.log('예정 상담 날짜 형식:', scheduledCounselings[0].counselingDate);
+    }
+    
+    if (completedCounselings.length > 0) {
+      console.log('완료 상담 데이터 예시:', completedCounselings[0]);
+      console.log('완료 상담 날짜 형식:', completedCounselings[0].counselingDate);
+    }
+    
+    // 전체 상담 데이터 중 일부만 로그
+    console.log('신청 상담 데이터 일부:', pendingCounselings.slice(0, 2));
+    console.log('예정 상담 데이터 일부:', scheduledCounselings.slice(0, 2));
+  }, [pendingCounselings, scheduledCounselings, completedCounselings]);
 
   // Function to handle opening the modal for a pending counseling
   const handlePendingCounselingClick = (counseling) => {
@@ -581,14 +790,52 @@ const CounselingPage = () => {
 
   // Function to get counselings for a specific date (for calendar)
   const getCounselingsForDate = (date) => {
-    return allCounselings.filter(counseling => {
-      const counselingDate = new Date(counseling.counselingDate);
-      return (
-        counselingDate.getDate() === date.getDate() &&
-        counselingDate.getMonth() === date.getMonth() &&
-        counselingDate.getFullYear() === date.getFullYear()
-      );
+    // 캘린더 날짜를 YYYY-MM-DD 형식으로 변환
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    
+    // 디버깅 로그 추가
+    const counselingsForDate = allCounselings.filter(counseling => {
+      if (!counseling.counselingDate) return false;
+      
+      // 상담 데이터의 날짜 처리
+      let isMatch = false;
+      
+      // 1. 정확한 문자열 비교 (YYYY-MM-DD 형식)
+      if (counseling.counselingDate === dateStr) {
+        isMatch = true;
+      } 
+      // 2. Date 객체로 변환하여 비교 (다른 형식의 날짜 문자열이거나 Date 객체인 경우)
+      else {
+        try {
+          const counselingDate = new Date(counseling.counselingDate);
+          // 유효한 날짜인지 확인
+          if (!isNaN(counselingDate.getTime())) {
+            // 날짜만 비교 (시간 제외)
+            isMatch = (
+              counselingDate.getDate() === date.getDate() &&
+              counselingDate.getMonth() === date.getMonth() &&
+              counselingDate.getFullYear() === date.getFullYear()
+            );
+          }
+        } catch (error) {
+          console.error('날짜 변환 오류:', counseling.counselingDate, error);
+        }
+      }
+      
+      // 디버깅을 위해 날짜 비교 로그 (전체 로그는 너무 많으므로 일치하는 경우만 로그)
+      if (isMatch) {
+        console.log(`날짜 일치: 캘린더 날짜=${dateStr}, 상담 날짜=${counseling.counselingDate}, 학생=${counseling.studentName}`);
+      }
+      
+      return isMatch;
     });
+    
+    // 해당 날짜에 상담이 있는 경우 로그
+    if (counselingsForDate.length > 0) {
+      console.log(`${dateStr} 날짜에 ${counselingsForDate.length}개의 상담이 있습니다:`, counselingsForDate);
+    }
+    
+    return counselingsForDate;
   };
 
   // Custom tile content for calendar
@@ -598,16 +845,63 @@ const CounselingPage = () => {
     const counselingsForDate = getCounselingsForDate(date);
     if (counselingsForDate.length === 0) return null;
     
+    // 디버깅용 로그 - 상담 일정이 있는 날짜의 타일 렌더링
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    console.log(`타일 렌더링: ${dateStr}에 ${counselingsForDate.length}개의 상담 일정 표시`);
+    
+    // 상태에 따른 색상 매핑 함수
+    const getStatusColor = (status) => {
+      if (!status) return '#9E9E9E'; // 상태가 없는 경우 회색
+      
+      // 한글 상태
+      if (status === '신청') return '#FFC107'; // 노란색
+      if (status === '예약확정') return '#2196F3'; // 파란색
+      if (status === '완료') return '#4CAF50'; // 초록색
+      if (status === '취소') return '#F44336'; // 빨간색
+      
+      // 영문 상태
+      if (status.toLowerCase() === 'pending') return '#FFC107';
+      if (status.toLowerCase() === 'scheduled') return '#2196F3';
+      if (status.toLowerCase() === 'completed') return '#4CAF50';
+      if (status.toLowerCase() === 'canceled') return '#F44336';
+      
+      return '#9E9E9E'; // 기본값
+    };
+    
     return (
-      <>
+      <div style={{ marginTop: '2px', width: '100%' }}>
         {counselingsForDate.slice(0, 2).map((counseling, index) => (
-          <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-            <CounselingDot status={counseling.status} />
-            <CounselingName>{counseling.studentName}</CounselingName>
+          <div key={index} style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '4px',
+            marginBottom: '2px',
+            fontSize: '10px',
+            lineHeight: '1.2',
+            width: '100%',
+            overflow: 'hidden'
+          }}>
+            <div style={{ 
+              width: '6px', 
+              height: '6px', 
+              borderRadius: '50%', 
+              backgroundColor: getStatusColor(counseling.status),
+              flexShrink: 0
+            }} />
+            <span style={{ 
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis', 
+              whiteSpace: 'nowrap',
+              fontSize: '9px'
+            }}>
+              {counseling.studentName}
+            </span>
           </div>
         ))}
-        {counselingsForDate.length > 2 && <CounselingName>+{counselingsForDate.length - 2}명</CounselingName>}
-      </>
+        {counselingsForDate.length > 2 && 
+          <div style={{ fontSize: '9px', textAlign: 'center' }}>+{counselingsForDate.length - 2}개 더</div>
+        }
+      </div>
     );
   };
 
@@ -879,44 +1173,565 @@ const CounselingPage = () => {
     );
   };
 
+  // API 요청 취소를 위한 컨트롤러 참조 저장
+  const abortControllerRef = useRef(null);
+  const requestIdRef = useRef(0);
+
+  // 필터링된 학생 목록 조회
+  const loadFilteredStudents = async () => {
+    // 학년과 반이 모두 선택되었을 때만 API 호출
+    if (!selectedGrade || !selectedClass) {
+      setFilteredStudents([]);
+      return;
+    }
+    
+    // 이전 요청이 있으면 취소
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // 새 AbortController 생성
+    abortControllerRef.current = new AbortController();
+    const { signal } = abortControllerRef.current;
+    
+    // 현재 요청 ID 저장
+    const currentRequestId = ++requestIdRef.current;
+    
+    setIsLoadingStudents(true);
+    try {
+      const params = {
+        grade: selectedGrade,
+        classNumber: selectedClass
+      };
+      
+      console.log(`학생 목록 요청 #${currentRequestId}: 학년=${selectedGrade}, 반=${selectedClass}`);
+      
+      // signal을 통해 취소 가능한 API 호출
+      const response = await studentApi.getStudents(params, { signal });
+      
+      // 현재 요청이 최신 요청이 아니면 결과 무시
+      if (currentRequestId !== requestIdRef.current) {
+        console.log(`요청 #${currentRequestId} 결과 무시: 더 최신 요청이 있음`);
+        return;
+      }
+      
+      console.log(`요청 #${currentRequestId} 응답 처리 중:`, response);
+      
+      // API에서 반환하는 실제 데이터 형식에 맞게 처리
+      let students = [];
+      if (Array.isArray(response)) {
+        students = response;
+      } else if (response && Array.isArray(response.data)) {
+        students = response.data;
+      } else if (response && response.data && response.data.success && Array.isArray(response.data.data)) {
+        students = response.data.data;
+      } else {
+        console.warn('학생 데이터를 찾을 수 없습니다:', response);
+      }
+      
+      // 추가 필터링 - 선택한 학년과 반에 맞는 학생만 필터링
+      const gradeStr = String(selectedGrade);
+      const classStr = String(selectedClass);
+      
+      students = students.filter(student => {
+        const studentGrade = String(student.grade);
+        const studentClass = String(student.classNumber);
+        return studentGrade === gradeStr && studentClass === classStr;
+      });
+      
+      console.log(`추가 필터링 후 학생 수: ${students.length}, 학년=${gradeStr}, 반=${classStr}`);
+      
+      if (students.length === 0) {
+        console.warn(`필터링 후 학생이 없습니다. 학년=${gradeStr}, 반=${classStr}`);
+      }
+      
+      // 학생 목록을 번호순으로 정렬
+      const sortedStudents = students.sort((a, b) => {
+        // number가 문자열인 경우를 대비해 숫자로 변환
+        const numA = typeof a.number === 'string' ? parseInt(a.number, 10) : a.number;
+        const numB = typeof b.number === 'string' ? parseInt(b.number, 10) : b.number;
+        return numA - numB;
+      });
+      
+      console.log(`요청 #${currentRequestId} 처리 완료: ${sortedStudents.length}개 학생 데이터 로드`);
+      setFilteredStudents(sortedStudents);
+    } catch (error) {
+      // 취소된 요청이 아니고 오류가 발생한 경우에만 처리
+      if (error.name !== 'AbortError') {
+        console.error(`요청 #${currentRequestId} 오류:`, error);
+        // 현재 요청이 최신 요청인 경우에만 상태 업데이트
+        if (currentRequestId === requestIdRef.current) {
+          setFilteredStudents([]);
+        }
+      } else {
+        console.log(`요청 #${currentRequestId} 취소됨`);
+      }
+    } finally {
+      // 현재 요청이 최신 요청인 경우에만 로딩 상태 업데이트
+      if (currentRequestId === requestIdRef.current) {
+        setIsLoadingStudents(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'otherStudents') {
+      loadFilteredStudents();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGrade, selectedClass, activeTab]);
+
+  // 학생 상담 내역 조회
+  const loadStudentCounselingRecords = async (student) => {
+    setSelectedStudent(student);
+    setStudentCounselingRecords([]);
+    
+    try {
+      // studentId 또는 id 중 존재하는 값을 사용
+      let studentIdToUse = student.studentId || student.id;
+      
+      // 학생 ID가 8자리 숫자인 경우 (예: 20250100) 뒤의 4자리에서 앞의 0을 제외한 값(100)만 사용
+      if (typeof studentIdToUse === 'string' && studentIdToUse.length === 8 && !isNaN(studentIdToUse)) {
+        // 뒤의 4자리 추출 후 앞의 0 제거
+        const last4Digits = studentIdToUse.slice(4);
+        studentIdToUse = parseInt(last4Digits, 10).toString();
+        console.log(`학생 ID 변환: ${student.studentId || student.id} -> ${studentIdToUse}`);
+      }
+      
+      const response = await counselingApi.getStudentCounselings(studentIdToUse);
+      
+      console.log('학생 상담 내역 응답:', response);
+      
+      if (response.data && response.data.success && Array.isArray(response.data.data)) {
+        setStudentCounselingRecords(response.data.data);
+      } else if (response.data && Array.isArray(response.data)) {
+        setStudentCounselingRecords(response.data);
+      } else if (Array.isArray(response)) {
+        setStudentCounselingRecords(response);
+      } else {
+        console.warn('상담 내역을 찾을 수 없습니다:', response);
+        setStudentCounselingRecords([]);
+      }
+    } catch (error) {
+      console.error('학생 상담 내역 조회 실패:', error);
+    }
+  };
+
+  
+  // 학생 상담 내역 상세보기 모달 열기
+  const openStudentCounselingModal = (counseling) => {
+    setSelectedStudentCounseling(counseling);
+    setIsStudentCounselingModalOpen(true);
+  };
+  
+  // 학생 상담 내역 상세보기 모달 닫기
+  const closeStudentCounselingModal = () => {
+    setIsStudentCounselingModalOpen(false);
+    setSelectedStudentCounseling(null);
+  };
+
+  // 다른 학생 상담 내역 렌더링
+  const renderOtherStudentsCounselings = () => {
+    return (
+      <div>
+        <FilterContainer>
+          <FilterLabel>학년:</FilterLabel>
+          <FilterSelect 
+            value={selectedGrade} 
+            onChange={(e) => setSelectedGrade(e.target.value)}
+          >
+            <option value="">전체</option>
+            <option value="1">1학년</option>
+            <option value="2">2학년</option>
+            <option value="3">3학년</option>
+          </FilterSelect>
+          
+          <FilterLabel>반:</FilterLabel>
+          <FilterSelect 
+            value={selectedClass} 
+            onChange={(e) => setSelectedClass(e.target.value)}
+          >
+            <option value="">전체</option>
+            <option value="1">1반</option>
+            <option value="2">2반</option>
+            <option value="3">3반</option>
+            <option value="4">4반</option>
+            <option value="5">5반</option>
+            <option value="6">6반</option>
+            <option value="7">7반</option>
+          </FilterSelect>
+        </FilterContainer>
+        
+        <div style={{ display: 'flex', gap: '24px' }}>
+          {/* 학생 목록 */}
+          <div style={{ flex: '1', maxWidth: '300px' }}>
+            <ListTitle>학생 목록</ListTitle>
+            {isLoadingStudents ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>학생 목록을 불러오는 중...</div>
+            ) : filteredStudents.length > 0 ? (
+              <div style={{
+                maxHeight: '500px',
+                overflowY: 'auto',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+              }}>
+                {filteredStudents.map(student => (
+                  <div 
+                    key={student.id || student.studentId}
+                    onClick={() => loadStudentCounselingRecords(student)}
+                    style={{ 
+                      padding: '12px 16px',
+                      borderBottom: '1px solid #e0e0e0',
+                      backgroundColor: selectedStudent && 
+                        (selectedStudent.id === student.id || selectedStudent.studentId === student.studentId) 
+                        ? '#f0f7ff' : 'white',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s ease'
+                    }}
+                  >
+                    <div style={{
+                      fontWeight: 'bold',
+                      fontSize: '16px',
+                      marginBottom: '4px',
+                      color: '#333'
+                    }}>{student.name}</div>
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#666',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
+                      <span style={{
+                        backgroundColor: '#1D4EB0',
+                        color: 'white',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        marginRight: '8px',
+                        fontSize: '12px'
+                      }}>{student.grade}학년</span>
+                      <span style={{
+                        backgroundColor: '#4CAF50',
+                        color: 'white',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        marginRight: '8px',
+                        fontSize: '12px'
+                      }}>{student.classNumber}반</span>
+                      <span style={{
+                        backgroundColor: '#FF9800',
+                        color: 'white',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontSize: '12px'
+                      }}>{student.number}번</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyList>
+                {selectedGrade || selectedClass ? 
+                  '조건에 맞는 학생이 없습니다.' : 
+                  '학년과 반을 선택하세요.'}
+              </EmptyList>
+            )}
+          </div>
+          
+          {/* 상담 내역 */}
+          <div style={{ flex: '2' }}>
+            <ListTitle>
+              {selectedStudent ? `${selectedStudent.name} 학생의 상담 내역` : '상담 내역'}
+            </ListTitle>
+            {selectedStudent ? (
+              studentCounselingRecords.length > 0 ? (
+                <table className="counseling-table" style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  marginTop: '16px',
+                  fontSize: '0.9rem',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  borderRadius: '8px',
+                  overflow: 'hidden'
+                }}>
+                  <thead>
+                    <tr>
+                      <th style={{
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        borderBottom: '1px solid #e0e0e0',
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold'
+                      }}>번호</th>
+                      <th style={{
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        borderBottom: '1px solid #e0e0e0',
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold'
+                      }}>상담일자</th>
+                      <th style={{
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        borderBottom: '1px solid #e0e0e0',
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold'
+                      }}>상담시간</th>
+                      <th style={{
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        borderBottom: '1px solid #e0e0e0',
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold'
+                      }}>상담자명</th>
+                      <th style={{
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        borderBottom: '1px solid #e0e0e0',
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold'
+                      }}>상담종류</th>
+                      <th style={{
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        borderBottom: '1px solid #e0e0e0',
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold'
+                      }}>상담유형</th>
+                      <th style={{
+                        padding: '12px 16px',
+                        textAlign: 'left',
+                        borderBottom: '1px solid #e0e0e0',
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold'
+                      }}>상태</th>
+                      <th style={{
+                        padding: '12px 16px',
+                        textAlign: 'center',
+                        borderBottom: '1px solid #e0e0e0',
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold'
+                      }}>상세보기</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {studentCounselingRecords.map((counseling, index) => (
+                      <tr key={counseling.id}>
+                        <td style={{
+                          padding: '12px 16px',
+                          borderBottom: '1px solid #e0e0e0'
+                        }}>{index + 1}</td>
+                        <td style={{
+                          padding: '12px 16px',
+                          borderBottom: '1px solid #e0e0e0'
+                        }}>{counseling.counselingDate}</td>
+                        <td style={{
+                          padding: '12px 16px',
+                          borderBottom: '1px solid #e0e0e0'
+                        }}>{counseling.counselingTime}</td>
+                        <td style={{
+                          padding: '12px 16px',
+                          borderBottom: '1px solid #e0e0e0'
+                        }}>{counseling.counselorName}</td>
+                        <td style={{
+                          padding: '12px 16px',
+                          borderBottom: '1px solid #e0e0e0'
+                        }}>{counseling.counselingType}</td>
+                        <td style={{
+                          padding: '12px 16px',
+                          borderBottom: '1px solid #e0e0e0'
+                        }}>{counseling.counselingCategory}</td>
+                        <td style={{
+                          padding: '12px 16px',
+                          borderBottom: '1px solid #e0e0e0'
+                        }}>
+                          <StatusBadge status={counseling.status}>
+                            {counseling.status}
+                          </StatusBadge>
+                        </td>
+                        <td style={{
+                          padding: '12px 16px',
+                          borderBottom: '1px solid #e0e0e0',
+                          textAlign: 'center'
+                        }}>
+                          <button 
+                            onClick={() => openStudentCounselingModal(counseling)}
+                            style={{
+                              backgroundColor: '#1D4EB0',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '6px 12px',
+                              fontSize: '0.85rem',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            상세보기
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <EmptyList>
+                  {selectedStudent.name} 학생의 상담 내역이 없습니다.
+                </EmptyList>
+              )
+            ) : (
+              <EmptyList>
+                좌측에서 학생을 선택하세요.
+              </EmptyList>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <PageContainer>
       <PageTitle>상담 관리</PageTitle>
       
-      <ContentGrid>
-        <CalendarSection>
-          <CalendarTitle>상담 일정</CalendarTitle>
-          <StyledCalendar
-            onChange={setSelectedDate}
-            value={selectedDate}
-            tileContent={tileContent}
-          />
-        </CalendarSection>
-        
-        <ListsSection>
-          <ListContainer>
-            <ListTitle>
-              상담 신청 내역
-              <Badge type="pending">{pendingCounselings.length}건</Badge>
-            </ListTitle>
-            {renderPendingCounselings()}
-          </ListContainer>
+      <TabContainer>
+        <Tab 
+          active={activeTab === 'myCounselings'} 
+          onClick={() => setActiveTab('myCounselings')}
+        >
+          내 상담 관리
+        </Tab>
+        <Tab 
+          active={activeTab === 'otherStudents'} 
+          onClick={() => setActiveTab('otherStudents')}
+        >
+          다른 학생 상담 내역
+        </Tab>
+      </TabContainer>
+      
+      {activeTab === 'myCounselings' ? (
+        <ContentGrid>
+          <CalendarSection>
+            <CalendarTitle>상담 일정</CalendarTitle>
+            <StyledCalendar
+              onChange={setSelectedDate}
+              value={selectedDate}
+              tileContent={tileContent}
+            />
+          </CalendarSection>
           
-          <ListContainer>
-            <ListTitle>
-              상담 예정 내역
-              <Badge type="scheduled">{scheduledCounselings.length}건</Badge>
-            </ListTitle>
-            {renderScheduledCounselings()}
-          </ListContainer>
-        </ListsSection>
-      </ContentGrid>
+          <ListsSection>
+            <ListContainer>
+              <ListTitle>
+                상담 신청 내역
+                <Badge type="pending">{pendingCounselings.length}건</Badge>
+              </ListTitle>
+              {renderPendingCounselings()}
+            </ListContainer>
+            
+            <ListContainer>
+              <ListTitle>
+                상담 예정 내역
+                <Badge type="scheduled">{scheduledCounselings.length}건</Badge>
+              </ListTitle>
+              {renderScheduledCounselings()}
+            </ListContainer>
+          </ListsSection>
+        </ContentGrid>
+      ) : (
+        renderOtherStudentsCounselings()
+      )}
       
       {isModalOpen && (
         <ModalOverlay>
           <ModalContainer>
             {renderModalContent()}
           </ModalContainer>
+        </ModalOverlay>
+      )}
+      
+      {/* 학생 상담 내역 상세보기 모달 */}
+      {isStudentCounselingModalOpen && selectedStudentCounseling && (
+        <ModalOverlay onClick={closeStudentCounselingModal}>
+          <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+            <ModalHeader>
+              <h3>상담 내역 상세보기</h3>
+              <CloseButton onClick={closeStudentCounselingModal}>&times;</CloseButton>
+            </ModalHeader>
+            
+            <InfoSection>
+              <InfoTitle>학생 정보</InfoTitle>
+              <InfoGrid>
+                <InfoItem>
+                  <InfoLabel>학생명</InfoLabel>
+                  <InfoValue>{selectedStudentCounseling.studentName}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>학년/반/번호</InfoLabel>
+                  <InfoValue>{selectedStudentCounseling.grade}학년 {selectedStudentCounseling.classNumber}반 {selectedStudentCounseling.number}번</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>연락처</InfoLabel>
+                  <InfoValue>{selectedStudentCounseling.contactNumber}</InfoValue>
+                </InfoItem>
+              </InfoGrid>
+            </InfoSection>
+            
+            <InfoSection>
+              <InfoTitle>상담 정보</InfoTitle>
+              <InfoGrid>
+                <InfoItem>
+                  <InfoLabel>신청일</InfoLabel>
+                  <InfoValue>{selectedStudentCounseling.requestDate}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>상담일</InfoLabel>
+                  <InfoValue>{selectedStudentCounseling.counselingDate}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>상담 시간</InfoLabel>
+                  <InfoValue>{selectedStudentCounseling.counselingTime}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>상담 종류</InfoLabel>
+                  <InfoValue>{selectedStudentCounseling.counselingType}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>상담 유형</InfoLabel>
+                  <InfoValue>{selectedStudentCounseling.counselingCategory}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>상담 장소</InfoLabel>
+                  <InfoValue>{selectedStudentCounseling.location}</InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>상태</InfoLabel>
+                  <InfoValue>
+                    <StatusBadge status={selectedStudentCounseling.status === '예약확정' ? 'scheduled' : selectedStudentCounseling.status === '완료' ? 'completed' : 'pending'}>
+                      {selectedStudentCounseling.status}
+                    </StatusBadge>
+                  </InfoValue>
+                </InfoItem>
+              </InfoGrid>
+            </InfoSection>
+            
+            <InfoSection>
+              <InfoTitle>상담 신청 내용</InfoTitle>
+              <InfoValue style={{ whiteSpace: 'pre-wrap' }}>{selectedStudentCounseling.requestContent}</InfoValue>
+            </InfoSection>
+            
+            {selectedStudentCounseling.resultContent && (
+              <InfoSection>
+                <InfoTitle>상담 결과</InfoTitle>
+                <InfoValue style={{ whiteSpace: 'pre-wrap' }}>{selectedStudentCounseling.resultContent}</InfoValue>
+              </InfoSection>
+            )}
+            
+            <ButtonContainer>
+              <SecondaryButton onClick={closeStudentCounselingModal}>
+                닫기
+              </SecondaryButton>
+            </ButtonContainer>
+          </ModalContent>
         </ModalOverlay>
       )}
     </PageContainer>
